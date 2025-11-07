@@ -275,7 +275,7 @@ func getNames(ctx context.Context, domains []string, asninfo bool, db repository
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if ent, err := db.FindOneEntityByContent(ctx, string(oam.FQDN), qtime, dbt.ContentFilters{
+		if ent, err := db.FindOneEntityByContent(ctx, oam.FQDN, qtime, dbt.ContentFilters{
 			"name": d,
 		}); err == nil && ent != nil {
 			if n, err := amassdb.FindByFQDNScope(ctx, db, ent, qtime); err == nil && len(n) > 0 {

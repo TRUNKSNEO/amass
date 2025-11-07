@@ -33,7 +33,7 @@ func SourceToAssetsWithinTTL(session et.Session, name, atype string, src *et.Sou
 
 	switch atype {
 	case string(oam.FQDN):
-		root, err := session.DB().FindOneEntityByContent(ctx, string(oam.FQDN), since, dbt.ContentFilters{
+		root, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, since, dbt.ContentFilters{
 			"name": name,
 		})
 		if err != nil || root == nil {
@@ -43,7 +43,7 @@ func SourceToAssetsWithinTTL(session et.Session, name, atype string, src *et.Sou
 		entities, _ = db.FindByFQDNScope(ctx, session.DB(), root, since)
 	case string(oam.Identifier):
 		if parts := strings.Split(name, ":"); len(parts) == 2 {
-			entities, _ = session.DB().FindEntitiesByContent(ctx, string(oam.Identifier), since, dbt.ContentFilters{
+			entities, _ = session.DB().FindEntitiesByContent(ctx, oam.Identifier, since, dbt.ContentFilters{
 				"unique_id": name,
 			})
 		}
@@ -53,7 +53,7 @@ func SourceToAssetsWithinTTL(session et.Session, name, atype string, src *et.Sou
 			return nil
 		}
 
-		entities, _ = session.DB().FindEntitiesByContent(ctx, string(oam.AutnumRecord), since, dbt.ContentFilters{
+		entities, _ = session.DB().FindEntitiesByContent(ctx, oam.AutnumRecord, since, dbt.ContentFilters{
 			"number": num,
 		})
 	case string(oam.IPNetRecord):
@@ -62,11 +62,11 @@ func SourceToAssetsWithinTTL(session et.Session, name, atype string, src *et.Sou
 			return nil
 		}
 
-		entities, _ = session.DB().FindEntitiesByContent(ctx, string(oam.IPNetRecord), since, dbt.ContentFilters{
+		entities, _ = session.DB().FindEntitiesByContent(ctx, oam.IPNetRecord, since, dbt.ContentFilters{
 			"cidr": prefix,
 		})
 	case string(oam.Service):
-		entities, _ = session.DB().FindEntitiesByContent(ctx, string(oam.Service), since, dbt.ContentFilters{
+		entities, _ = session.DB().FindEntitiesByContent(ctx, oam.Service, since, dbt.ContentFilters{
 			"unique_id": name,
 		})
 	}

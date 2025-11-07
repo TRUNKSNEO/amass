@@ -180,7 +180,7 @@ func (d *dnsPlugin) lookupWithinTTL(session et.Session, name string, atype oam.A
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	entity, err := session.DB().FindOneEntityByContent(ctx, string(oam.FQDN), time.Time{}, dbt.ContentFilters{
+	entity, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, time.Time{}, dbt.ContentFilters{
 		"name": name,
 	})
 	if err != nil || entity == nil {

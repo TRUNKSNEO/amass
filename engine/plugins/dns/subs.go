@@ -100,7 +100,7 @@ func (d *dnsSubs) registered(e *et.Event, name string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	fqdn, err := e.Session.DB().FindOneEntityByContent(ctx, string(oam.FQDN), time.Time{}, dbt.ContentFilters{
+	fqdn, err := e.Session.DB().FindOneEntityByContent(ctx, oam.FQDN, time.Time{}, dbt.ContentFilters{
 		"name": name,
 	})
 	if err != nil || fqdn == nil {
@@ -172,7 +172,7 @@ func (d *dnsSubs) lookup(e *et.Event, subdomain string, since time.Time) []*relS
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	fqdn, err := e.Session.DB().FindOneEntityByContent(ctx, string(oam.FQDN), time.Time{}, dbt.ContentFilters{
+	fqdn, err := e.Session.DB().FindOneEntityByContent(ctx, oam.FQDN, time.Time{}, dbt.ContentFilters{
 		"name": subdomain,
 	})
 	if err != nil || fqdn == nil {

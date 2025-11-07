@@ -388,7 +388,7 @@ func (s *Scope) IsAddressInScope(c repository.Repository, ip *oamnet.IPAddress) 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	addr, err := c.FindOneEntityByContent(ctx, string(oam.IPAddress), s.startTime, dbt.ContentFilters{
+	addr, err := c.FindOneEntityByContent(ctx, oam.IPAddress, s.startTime, dbt.ContentFilters{
 		"address": ip.Address.String(),
 	})
 	if err != nil {

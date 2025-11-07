@@ -107,7 +107,7 @@ func (h *horizPlugin) addAssociatedRelationship(e *et.Event, assocs []*scope.Ass
 
 			if match, result := e.Session.Scope().IsAssetInScope(impacted.Asset, conf); result >= conf && match != nil {
 				if a, err := e.Session.DB().FindOneEntityByContent(ctx,
-					string(match.AssetType()), e.Session.StartTime(), assetToContentFilters(match)); err == nil && a != nil {
+					match.AssetType(), e.Session.StartTime(), assetToContentFilters(match)); err == nil && a != nil {
 					for _, assoc2 := range e.Session.Scope().AssetsWithAssociation(e.Session.DB(), a) {
 						h.makeAssocRelationshipEntries(e, assoc.Match, assoc2)
 					}
@@ -183,7 +183,7 @@ func (h *horizPlugin) process(e *et.Event, assets []*dbt.Entity) {
 			h.sweepAroundIPs(ctx, e, asset)
 			//h.sweepNetblock(e, v, src)
 		case *oamreg.IPNetRecord:
-			if a, err := e.Session.DB().FindOneEntityByContent(ctx, string(oam.Netblock), e.Session.StartTime(), dbt.ContentFilters{
+			if a, err := e.Session.DB().FindOneEntityByContent(ctx, oam.Netblock, e.Session.StartTime(), dbt.ContentFilters{
 				"cidr": v.CIDR.String(),
 			}); err == nil && a != nil {
 				if _, ok := a.Asset.(*oamnet.Netblock); ok {
@@ -220,7 +220,7 @@ func (h *horizPlugin) ipPTRTargetsInScope(ctx context.Context, e *et.Event, nb *
 				continue
 			}
 
-			if a, err := e.Session.DB().FindOneEntityByContent(ctx, string(oam.FQDN), e.Session.StartTime(), dbt.ContentFilters{
+			if a, err := e.Session.DB().FindOneEntityByContent(ctx, oam.FQDN, e.Session.StartTime(), dbt.ContentFilters{
 				"name": utils.RemoveLastDot(reverse),
 			}); err == nil && a != nil {
 				if edges, err := e.Session.DB().OutgoingEdges(ctx, a, e.Session.StartTime(), "dns_record"); err == nil && len(edges) > 0 {

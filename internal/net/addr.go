@@ -20,7 +20,7 @@ import (
 func ReadASPrefixes(ctx context.Context, db repository.Repository, asn int, since time.Time) []string {
 	var prefixes []string
 
-	fqdn, err := db.FindOneEntityByContent(ctx, string(oam.AutonomousSystem), since, dbt.ContentFilters{
+	fqdn, err := db.FindOneEntityByContent(ctx, oam.AutonomousSystem, since, dbt.ContentFilters{
 		"number": asn,
 	})
 	if err != nil || fqdn == nil {
@@ -49,7 +49,7 @@ func NamesToAddrs(ctx context.Context, db repository.Repository, since time.Time
 	var fqdns []*dbt.Entity
 
 	for _, name := range names {
-		if ent, err := db.FindOneEntityByContent(ctx, string(oam.FQDN), since, dbt.ContentFilters{
+		if ent, err := db.FindOneEntityByContent(ctx, oam.FQDN, since, dbt.ContentFilters{
 			"name": name,
 		}); err == nil && ent != nil {
 			fqdns = append(fqdns, ent)

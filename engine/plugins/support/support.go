@@ -169,7 +169,7 @@ func IPAddressSweep(e *et.Event, addr *oamnet.IPAddress, src *et.Source, size in
 	defer cancel()
 
 	// ensure we do not work on an IP address that was processed previously
-	_, err := e.Session.DB().FindEntitiesByContent(ctx, string(oam.IPAddress), e.Session.StartTime(), dbt.ContentFilters{
+	_, err := e.Session.DB().FindEntitiesByContent(ctx, oam.IPAddress, e.Session.StartTime(), dbt.ContentFilters{
 		"address": addr.Address.String(),
 	})
 	if err == nil {
@@ -206,7 +206,7 @@ func IsCNAME(session et.Session, name *oamdns.FQDN) (*oamdns.FQDN, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	fqdn, err := session.DB().FindOneEntityByContent(ctx, string(oam.FQDN), session.StartTime(), dbt.ContentFilters{
+	fqdn, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, session.StartTime(), dbt.ContentFilters{
 		"name": name.Name,
 	})
 	if err != nil || fqdn == nil {
@@ -231,7 +231,7 @@ func NameIPAddresses(session et.Session, name *oamdns.FQDN) []*oamnet.IPAddress 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	fqdn, err := session.DB().FindOneEntityByContent(ctx, string(oam.FQDN), session.StartTime(), dbt.ContentFilters{
+	fqdn, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, session.StartTime(), dbt.ContentFilters{
 		"name": name.Name,
 	})
 	if err != nil || fqdn == nil {

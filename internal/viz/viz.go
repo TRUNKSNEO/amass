@@ -47,7 +47,7 @@ func VizData(domains []string, since time.Time, db repository.Repository) ([]Nod
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if ent, err := db.FindOneEntityByContent(ctx, string(oam.FQDN), since, types.ContentFilters{
+		if ent, err := db.FindOneEntityByContent(ctx, oam.FQDN, since, types.ContentFilters{
 			"name": d,
 		}); err == nil && ent != nil {
 			if n, err := amassdb.FindByFQDNScope(ctx, db, ent, since); err == nil && len(n) > 0 {

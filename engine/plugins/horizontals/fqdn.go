@@ -86,7 +86,7 @@ func (h *horfqdn) check(e *et.Event) error {
 
 		var assets []*dbt.Entity
 		for _, im := range impacted {
-			if a, err := e.Session.DB().FindOneEntityByContent(ctx, string(im.Asset.AssetType()),
+			if a, err := e.Session.DB().FindOneEntityByContent(ctx, im.Asset.AssetType(),
 				e.Session.StartTime(), assetToContentFilters(im.Asset)); err == nil && a != nil {
 				assets = append(assets, a)
 			} else if n := h.store(e, im.Asset); n != nil {

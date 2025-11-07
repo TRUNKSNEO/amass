@@ -160,7 +160,7 @@ func getNewNames(domains []string, since time.Time, db repository.Repository) []
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if ent, err := db.FindOneEntityByContent(ctx, string(oam.FQDN), since, dbt.ContentFilters{
+		if ent, err := db.FindOneEntityByContent(ctx, oam.FQDN, since, dbt.ContentFilters{
 			"name": d},
 		); err == nil && ent != nil {
 			if n, err := amassdb.FindByFQDNScope(ctx, db, ent, since); err == nil && len(n) > 0 {
