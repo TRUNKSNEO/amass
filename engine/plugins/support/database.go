@@ -205,9 +205,13 @@ func CreateServiceAsset(session et.Session, src *dbt.Entity, rel oam.Relation, s
 
 		// go though the hosts that could have previously associated with the service
 		for _, s := range srcs {
-			if edges, err := session.DB().OutgoingEdges(ctx, s, time.Time{}, "port"); err == nil && len(edges) > 0 {
+			if edges, err := session.DB().OutgoingEdges(ctx, s, time.Time{}); err == nil && len(edges) > 0 {
 				for _, edge := range edges {
-					if eport, ok := edge.Relation.(*general.PortRelation); ok && eport.PortNumber == rport.PortNumber && strings.EqualFold(eport.Protocol, rport.Protocol) {
+					if !strings.Contains(edge.Relation.Label(), "port") {
+						continue
+					}
+					if eport, ok := edge.Relation.(*general.PortRelation); ok &&
+						eport.PortNumber == rport.PortNumber && strings.EqualFold(eport.Protocol, rport.Protocol) {
 						if to, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && to != nil {
 							if srv, ok := to.Asset.(*platform.Service); ok && srv.OutputLen == serv.OutputLen {
 								srvs = append(srvs, to)

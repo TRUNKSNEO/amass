@@ -220,11 +220,9 @@ func (rd *rdapPlugin) storeEntity(e *et.Event, level int, entity *rdap.Entity, a
 	}
 
 	if m.IsMatch(string(oam.URL)) {
-		a, err := e.Session.DB().CreateAsset(ctx, u)
-		if err != nil {
-			return
+		if a, err := e.Session.DB().CreateAsset(ctx, u); err == nil && a != nil {
+			_ = rd.createContactEdge(ctx, e.Session, cr, a, &general.SimpleRelation{Name: "url"}, src)
 		}
-		_ = rd.createContactEdge(ctx, e.Session, cr, a, &general.SimpleRelation{Name: "url"}, src)
 	}
 
 	v := entity.VCard

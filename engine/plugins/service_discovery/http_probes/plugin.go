@@ -7,6 +7,7 @@ package http_probes
 import (
 	"context"
 	"crypto/x509"
+	"fmt"
 	"hash/maphash"
 	"log/slog"
 	"sync"
@@ -151,21 +152,20 @@ func (hp *httpProbing) store(e *et.Event, resp *http.Response, entity *dbt.Entit
 	if serv == nil {
 		return findings
 	}
+	serv.Type = "web-service"
 	serv.Output = resp.Body
 	serv.OutputLen = int(resp.Length)
 	serv.Attributes = resp.Header
 
-	proto := "http"
 	var c *oamcert.TLSCertificate
 	if firstAsset != nil {
-		proto = "https"
 		c = firstAsset.Asset.(*oamcert.TLSCertificate)
 	}
 
 	portrel := &general.PortRelation{
-		Name:       "port",
+		Name:       fmt.Sprintf("tcp_port_%d", port),
 		PortNumber: port,
-		Protocol:   proto,
+		Protocol:   "TCP",
 	}
 
 	s, err := support.CreateServiceAsset(e.Session, entity, portrel, serv, c)

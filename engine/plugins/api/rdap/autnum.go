@@ -147,7 +147,7 @@ func (r *autnum) store(e *et.Event, resp *rdap.Autnum, entity *dbt.Entity, m *co
 	var findings []*support.Finding
 	autrec := entity.Asset.(*oamreg.AutnumRecord)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if u := r.plugin.getJSONLink(resp.Links); u != nil && m.IsMatch(string(oam.URL)) {
