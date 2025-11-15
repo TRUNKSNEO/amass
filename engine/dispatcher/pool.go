@@ -81,7 +81,7 @@ type pipelinePool struct {
 	lastScale time.Time
 }
 
-func newPipelinePool(l *slog.Logger, dis *dynamicDispatcher, reg et.Registry, eventTy oam.AssetType, min, max int) *pipelinePool {
+func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, min, max int) *pipelinePool {
 	if min <= 0 {
 		min = 1
 	}
@@ -89,10 +89,10 @@ func newPipelinePool(l *slog.Logger, dis *dynamicDispatcher, reg et.Registry, ev
 		max = min
 	}
 	return &pipelinePool{
-		log:              l,
+		log:              dis.log,
 		dis:              dis,
-		reg:              reg,
-		eventTy:          eventTy,
+		reg:              dis.reg,
+		eventTy:          atype,
 		minInstances:     min,
 		maxInstances:     max,
 		instances:        make(map[string]*pipelineInstance),
@@ -207,16 +207,11 @@ func (p *pipelinePool) createInstanceLocked() *pipelineInstance {
 		return nil
 	}
 
-	base, err := p.reg.GetPipeline(p.eventTy)
+	// NOTE: adjust this if you decide to clone *Pipeline vs share it.
+	ap, err := p.reg.GetPipeline(p.eventTy)
 	if err != nil {
 		p.log.Error("GetPipeline failed", "atype", p.eventTy, "err", err)
 		return nil
-	}
-
-	// NOTE: adjust this if you decide to clone *Pipeline vs share it.
-	ap := &et.AssetPipeline{
-		Pipeline: base.Pipeline,
-		Queue:    et.NewPipelineQueue(),
 	}
 
 	id := fmt.Sprintf("%s-%d", p.eventTy, len(p.instances)+1)

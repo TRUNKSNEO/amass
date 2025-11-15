@@ -32,7 +32,7 @@ func NewDispatcher(l *slog.Logger, r et.Registry, mgr et.SessionManager) et.Disp
 		reg:    r,
 		mgr:    mgr,
 		done:   make(chan struct{}),
-		cchan:  make(chan *et.EventDataElement),
+		cchan:  make(chan *et.EventDataElement, 1000),
 		cqueue: queue.NewQueue(),
 		pools:  make(map[oam.AssetType]*pipelinePool),
 	}
@@ -115,17 +115,17 @@ func (d *dynamicDispatcher) DispatchEvent(e *et.Event) error {
 		stats.Unlock()
 	}
 
-	at := e.Entity.Asset.AssetType()
-	if pool := d.getOrCreatePool(at); pool != nil {
+	atype := e.Entity.Asset.AssetType()
+	if pool := d.getOrCreatePool(atype); pool != nil {
 		return pool.Dispatch(e)
 	}
 
-	return fmt.Errorf("no pipeline pool available for asset type %s", at)
+	return fmt.Errorf("no pipeline pool available for asset type %s", string(atype))
 }
 
-func (d *dynamicDispatcher) getOrCreatePool(at oam.AssetType) *pipelinePool {
+func (d *dynamicDispatcher) getOrCreatePool(atype oam.AssetType) *pipelinePool {
 	d.mu.RLock()
-	pool := d.pools[at]
+	pool := d.pools[atype]
 	d.mu.RUnlock()
 	if pool != nil {
 		return pool
@@ -133,15 +133,14 @@ func (d *dynamicDispatcher) getOrCreatePool(at oam.AssetType) *pipelinePool {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
-
-	if pool = d.pools[at]; pool != nil {
+	if pool = d.pools[atype]; pool != nil {
 		return pool
 	}
 
 	// TODO: make these configurable per AssetType
 	minInstances := 2
 	maxInstances := 16
-	pool = newPipelinePool(d.log, d, d.reg, at, minInstances, maxInstances)
-	d.pools[at] = pool
+	pool = newPipelinePool(d, atype, minInstances, maxInstances)
+	d.pools[atype] = pool
 	return pool
 }
