@@ -8,68 +8,76 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
-	"runtime"
+	"sync"
 	"time"
 
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	oam "github.com/owasp-amass/open-asset-model"
 )
 
-const (
-	MinPipelineQueueSize = 100
-	MaxPipelineQueueSize = 500
-)
+type dynamicDispatcher struct {
+	log *slog.Logger
+	reg et.Registry
+	mgr et.SessionManager
 
-type dis struct {
-	logger *slog.Logger
-	reg    et.Registry
-	mgr    et.SessionManager
-	done   chan struct{}
-	dchan  chan *et.Event
-	cchan  chan *et.EventDataElement
+	mu    sync.RWMutex
+	pools map[oam.AssetType]*pipelinePool
 }
 
 func NewDispatcher(l *slog.Logger, r et.Registry, mgr et.SessionManager) et.Dispatcher {
-	if l == nil {
-		l = slog.New(slog.NewTextHandler(os.Stdout, nil))
+	return &dynamicDispatcher{
+		log:   l,
+		reg:   r,
+		mgr:   mgr,
+		pools: make(map[oam.AssetType]*pipelinePool),
 	}
-
-	d := &dis{
-		logger: l,
-		reg:    r,
-		mgr:    mgr,
-		done:   make(chan struct{}),
-		dchan:  make(chan *et.Event, MinPipelineQueueSize),
-		cchan:  make(chan *et.EventDataElement, MinPipelineQueueSize),
-	}
-
-	go d.maintainPipelines()
-	return d
 }
 
-func (d *dis) Shutdown() {
-	select {
-	case <-d.done:
-		return
-	default:
-	}
-	close(d.done)
+func (d *dynamicDispatcher) Shutdown() {
+	// Optional: add pool-level shutdown if you want explicit draining.
 }
 
-func (d *dis) DispatchEvent(e *et.Event) error {
-	if e == nil {
-		return errors.New("the event is nil")
-	} else if e.Session == nil {
-		return errors.New("the event has no associated session")
-	} else if e.Session.Done() {
-		return errors.New("the associated session has been terminated")
-	} else if e.Entity == nil || e.Entity.Asset == nil {
-		return errors.New("the event has no associated entity or asset")
+func (d *dynamicDispatcher) DispatchEvent(e *et.Event) error {
+	if e == nil || e.Entity == nil {
+		return nil
 	}
 
-	d.dchan <- e
-	return nil
+	at := inferAssetTypeFromEvent(e)
+	pool := d.getOrCreatePool(at)
+
+	return pool.Dispatch(e)
+}
+
+func (d *dynamicDispatcher) getOrCreatePool(at oam.AssetType) *pipelinePool {
+	d.mu.RLock()
+	pool := d.pools[at]
+	d.mu.RUnlock()
+	if pool != nil {
+		return pool
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if pool = d.pools[at]; pool != nil {
+		return pool
+	}
+
+	// TODO: make these configurable per AssetType
+	minInstances := 2
+	maxInstances := 16
+	pool = newPipelinePool(d.log, d.reg, at, minInstances, maxInstances)
+	d.pools[at] = pool
+	return pool
+}
+
+// inferAssetTypeFromEvent should mirror your current pipeline selection logic.
+func inferAssetTypeFromEvent(e *et.Event) oam.AssetType {
+	// Pseudo-code; wire this to your entity / OAM data:
+	//
+	//   return e.Entity.AssetType()
+	//
+	return 0
 }
 
 func (d *dis) maintainPipelines() {
@@ -100,25 +108,6 @@ loop:
 			d.completedCallback(e)
 		}
 	}
-}
-
-func checkOnTheHeap() {
-	var mstats runtime.MemStats
-	runtime.ReadMemStats(&mstats)
-
-	h := mstats.HeapAlloc
-	n := mstats.NextGC
-	if h <= n {
-		return
-	}
-
-	if diff := mstats.HeapAlloc - mstats.NextGC; bToMb(diff) > 500 {
-		runtime.GC()
-	}
-}
-
-func bToMb(b uint64) uint64 {
-	return b / 1024 / 1024
 }
 
 func (d *dis) fillPipelineQueues() {
