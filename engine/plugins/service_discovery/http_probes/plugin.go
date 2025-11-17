@@ -134,8 +134,7 @@ func (hp *httpProbing) store(e *et.Event, resp *http.Response, entity *dbt.Entit
 			if prev == nil {
 				firstAsset = a
 				firstCert = cert
-			} else {
-				tls := prev.Asset.(*oamcert.TLSCertificate)
+			} else if tls, valid := prev.Asset.(*oamcert.TLSCertificate); valid {
 				findings = append(findings, &support.Finding{
 					From:     prev,
 					FromName: tls.SerialNumber,
@@ -174,7 +173,11 @@ func (hp *httpProbing) store(e *et.Event, resp *http.Response, entity *dbt.Entit
 		return findings
 	}
 
-	serv = s.Asset.(*platform.Service)
+	serv, valid := s.Asset.(*platform.Service)
+	if !valid {
+		return findings
+	}
+
 	// for adding the source information
 	findings = append(findings, &support.Finding{
 		From:     entity,

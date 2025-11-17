@@ -207,13 +207,10 @@ func CreateServiceAsset(session et.Session, src *dbt.Entity, rel oam.Relation, s
 		for _, s := range srcs {
 			if edges, err := session.DB().OutgoingEdges(ctx, s, time.Time{}); err == nil && len(edges) > 0 {
 				for _, edge := range edges {
-					if !strings.Contains(edge.Relation.Label(), "port") {
-						continue
-					}
 					if eport, ok := edge.Relation.(*general.PortRelation); ok &&
 						eport.PortNumber == rport.PortNumber && strings.EqualFold(eport.Protocol, rport.Protocol) {
 						if to, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && to != nil {
-							if srv, ok := to.Asset.(*platform.Service); ok && srv.OutputLen == serv.OutputLen {
+							if srv, ok := to.Asset.(*platform.Service); ok && srv.OutputLen != 0 && srv.OutputLen == serv.OutputLen {
 								srvs = append(srvs, to)
 							}
 						}
@@ -227,7 +224,12 @@ func CreateServiceAsset(session et.Session, src *dbt.Entity, rel oam.Relation, s
 	for _, srv := range srvs {
 		var num int
 
-		s := srv.Asset.(*platform.Service)
+		s, valid := srv.Asset.(*platform.Service)
+		if !valid {
+			continue
+		}
+
+		// compare some of the service attributes to find a match
 		for _, key := range []string{"Server", "X-Powered-By"} {
 			if server1, ok := serv.Attributes[key]; ok && server1[0] != "" {
 				if server2, ok := s.Attributes[key]; ok && server1[0] == server2[0] {
@@ -265,12 +267,9 @@ func CreateServiceAsset(session et.Session, src *dbt.Entity, rel oam.Relation, s
 		}
 	}
 
-	var result *dbt.Entity
-	if match != nil {
-		result = match
-	} else {
+	if match == nil {
 		if a, err := session.DB().CreateAsset(ctx, serv); err == nil && a != nil {
-			result = a
+			match = a
 		} else {
 			return nil, errors.New("failed to create the OAM Service asset")
 		}
@@ -279,7 +278,7 @@ func CreateServiceAsset(session et.Session, src *dbt.Entity, rel oam.Relation, s
 	_, err := session.DB().CreateEdge(ctx, &dbt.Edge{
 		Relation:   rel,
 		FromEntity: src,
-		ToEntity:   result,
+		ToEntity:   match,
 	})
-	return result, err
+	return match, err
 }

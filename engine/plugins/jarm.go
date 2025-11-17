@@ -122,7 +122,7 @@ func (j *jarmPlugin) query(e *et.Event, since time.Time) {
 			if a, err := e.Session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
 				switch a.Asset.(type) {
 				case *oamdns.FQDN:
-					if portrel.Protocol == "tcp" {
+					if portrel.Protocol == "TCP" {
 						t := &fingerprint{
 							asset: e.Entity,
 							port:  edge,
@@ -130,7 +130,7 @@ func (j *jarmPlugin) query(e *et.Event, since time.Time) {
 						targets = append([]*fingerprint{t}, targets...)
 					}
 				case *network.IPAddress:
-					if portrel.Protocol == "tcp" {
+					if portrel.Protocol == "TCP" {
 						targets = append(targets, &fingerprint{
 							asset: e.Entity,
 							port:  edge,
