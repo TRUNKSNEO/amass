@@ -68,28 +68,28 @@ func (j *jarmPlugin) check(e *et.Event) error {
 		return errors.New("failed to extract the Service asset")
 	}
 
-	if !j.hasCertificate(e) {
-		return nil
-	}
-
 	since, err := support.TTLStartTime(e.Session.Config(), string(oam.Service), string(oam.Service), j.name)
 	if err != nil {
 		return err
 	}
 
+	if !j.hasCertificate(e, since) {
+		return nil
+	}
+
 	src := j.source
 	if !support.AssetMonitoredWithinTTL(e.Session, e.Entity, src, since) {
-		j.query(e)
+		j.query(e, since)
 		support.MarkAssetMonitored(e.Session, e.Entity, src)
 	}
 	return nil
 }
 
-func (j *jarmPlugin) hasCertificate(e *et.Event) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func (j *jarmPlugin) hasCertificate(e *et.Event, since time.Time) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if edges, err := e.Session.DB().OutgoingEdges(ctx, e.Entity, e.Session.StartTime(), "certificate"); err == nil && len(edges) > 0 {
+	if edges, err := e.Session.DB().OutgoingEdges(ctx, e.Entity, since, "certificate"); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
 			if a, err := e.Session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
 				if a.Asset.AssetType() == oam.TLSCertificate {
@@ -107,13 +107,13 @@ type fingerprint struct {
 	hash  string
 }
 
-func (j *jarmPlugin) query(e *et.Event) {
+func (j *jarmPlugin) query(e *et.Event, since time.Time) {
 	var targets []*fingerprint
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if edges, err := e.Session.DB().IncomingEdges(ctx, e.Entity, e.Session.StartTime()); err == nil && len(edges) > 0 {
+	if edges, err := e.Session.DB().IncomingEdges(ctx, e.Entity, since); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
 			portrel, ok := edge.Relation.(*general.PortRelation)
 			if !ok {

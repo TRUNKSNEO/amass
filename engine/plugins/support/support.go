@@ -174,7 +174,7 @@ func IPAddressSweep(e *et.Event, addr *oamnet.IPAddress, src *et.Source, size in
 	defer cancel()
 
 	// ensure we do not work on an IP address that was processed previously
-	_, err := e.Session.DB().FindEntitiesByContent(ctx, oam.IPAddress, e.Session.StartTime(), dbt.ContentFilters{
+	_, err := e.Session.DB().FindEntitiesByContent(ctx, oam.IPAddress, time.Time{}, dbt.ContentFilters{
 		"address": addr.Address.String(),
 	})
 	if err == nil {
@@ -211,14 +211,14 @@ func IsCNAME(session et.Session, name *oamdns.FQDN) (*oamdns.FQDN, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	fqdn, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, session.StartTime(), dbt.ContentFilters{
+	fqdn, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, time.Time{}, dbt.ContentFilters{
 		"name": name.Name,
 	})
 	if err != nil || fqdn == nil {
 		return nil, false
 	}
 
-	if edges, err := session.DB().OutgoingEdges(ctx, fqdn, session.StartTime(), "dns_record"); err == nil && len(edges) > 0 {
+	if edges, err := session.DB().OutgoingEdges(ctx, fqdn, time.Time{}, "dns_record"); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
 			if rec, ok := edge.Relation.(*oamdns.BasicDNSRelation); ok && rec.Header.RRType == 5 {
 				if to, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil {
@@ -236,7 +236,7 @@ func NameIPAddresses(session et.Session, name *oamdns.FQDN) []*oamnet.IPAddress 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	fqdn, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, session.StartTime(), dbt.ContentFilters{
+	fqdn, err := session.DB().FindOneEntityByContent(ctx, oam.FQDN, time.Time{}, dbt.ContentFilters{
 		"name": name.Name,
 	})
 	if err != nil || fqdn == nil {

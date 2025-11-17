@@ -37,23 +37,25 @@ func (h *horfqdn) check(e *et.Event) error {
 		return errors.New("failed to extract the FQDN asset")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	since, err := support.TTLStartTime(e.Session.Config(), string(oam.FQDN), string(oam.FQDN), h.plugin.name)
+	if err != nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var ptrs []*dbt.Edge
-	if edges, err := e.Session.DB().OutgoingEdges(ctx, e.Entity, e.Session.StartTime(), "dns_record"); err == nil {
+	if edges, err := e.Session.DB().OutgoingEdges(ctx, e.Entity, since, "dns_record"); err == nil {
 		for _, edge := range edges {
 			if rel, ok := edge.Relation.(*oamdns.BasicDNSRelation); ok && rel.Header.RRType == 12 {
 				ptrs = append(ptrs, edge)
 			}
 		}
 	}
-	if len(ptrs) == 0 {
-		if !support.HasDNSRecordType(e, int(dns.TypeA)) &&
-			!support.HasDNSRecordType(e, int(dns.TypeAAAA)) &&
-			!support.HasDNSRecordType(e, int(dns.TypeCNAME)) {
-			return nil
-		}
+	if len(ptrs) == 0 && !support.HasDNSRecordType(e, int(dns.TypeA)) &&
+		!support.HasDNSRecordType(e, int(dns.TypeAAAA)) && !support.HasDNSRecordType(e, int(dns.TypeCNAME)) {
+		return nil
 	}
 	if _, conf := e.Session.Scope().IsAssetInScope(fqdn, 0); conf > 0 {
 		return nil
@@ -70,7 +72,7 @@ func (h *horfqdn) check(e *et.Event) error {
 	}
 
 	if len(ptrs) > 0 {
-		h.checkPTR(e, ptrs, e.Entity)
+		h.checkPTR(e, ptrs, e.Entity, since)
 		return nil
 	}
 
@@ -86,8 +88,8 @@ func (h *horfqdn) check(e *et.Event) error {
 
 		var assets []*dbt.Entity
 		for _, im := range impacted {
-			if a, err := e.Session.DB().FindOneEntityByContent(ctx, im.Asset.AssetType(),
-				e.Session.StartTime(), assetToContentFilters(im.Asset)); err == nil && a != nil {
+			if a, err := e.Session.DB().FindOneEntityByContent(ctx,
+				im.Asset.AssetType(), since, assetToContentFilters(im.Asset)); err == nil && a != nil {
 				assets = append(assets, a)
 			} else if n := h.store(e, im.Asset); n != nil {
 				assets = append(assets, n)
@@ -95,18 +97,18 @@ func (h *horfqdn) check(e *et.Event) error {
 		}
 
 		if len(assets) > 0 {
-			h.plugin.process(e, assets)
-			h.plugin.addAssociatedRelationship(e, assocs)
+			h.plugin.process(e, since, assets)
+			h.plugin.addAssociatedRelationship(e, since, assocs)
 		}
 	}
 	return nil
 }
 
-func (h *horfqdn) checkPTR(e *et.Event, edges []*dbt.Edge, fqdn *dbt.Entity) {
+func (h *horfqdn) checkPTR(e *et.Event, edges []*dbt.Edge, fqdn *dbt.Entity, since time.Time) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if ins, err := e.Session.DB().IncomingEdges(ctx, fqdn, e.Session.StartTime(), "ptr_record"); err == nil && len(ins) > 0 {
+	if ins, err := e.Session.DB().IncomingEdges(ctx, fqdn, since, "ptr_record"); err == nil && len(ins) > 0 {
 		for _, r := range ins {
 			from, err := e.Session.DB().FindEntityById(ctx, r.FromEntity.ID)
 			if err != nil {
