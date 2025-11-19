@@ -7,10 +7,12 @@ package support
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
 	"os"
 	"time"
 
-	"github.com/owasp-amass/amass/v5/internal/net/http"
+	amasshttp "github.com/owasp-amass/amass/v5/internal/net/http"
 	"github.com/owasp-amass/open-asset-model/contact"
 )
 
@@ -29,6 +31,8 @@ type parseRequest struct {
 	Country  string `json:"country"`
 }
 
+var postalReqAvail chan struct{}
+var postalResponseAvail chan bool
 var postalHost, postalPort string
 
 func init() {
@@ -41,6 +45,10 @@ func init() {
 	if postalPort == "" {
 		postalPort = "4001"
 	}
+
+	postalReqAvail = make(chan struct{}, 1)
+	postalResponseAvail = make(chan bool, 1)
+	go postalServerHeartbeat()
 }
 
 func StreetAddressToLocation(address string) *contact.Location {
@@ -86,6 +94,10 @@ func StreetAddressToLocation(address string) *contact.Location {
 }
 
 func postalServerParseAddress(address string) ([]parsedComponent, error) {
+	if !isPostalServerAvailable() {
+		return nil, errors.New("libpostal is not available")
+	}
+
 	reqJSON, err := json.Marshal(parseRequest{Address: address})
 	if err != nil {
 		return nil, err
@@ -94,7 +106,7 @@ func postalServerParseAddress(address string) ([]parsedComponent, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	resp, err := http.RequestWebPage(ctx, &http.Request{
+	resp, err := amasshttp.RequestWebPage(ctx, &amasshttp.Request{
 		Method: "POST",
 		URL:    "http://" + postalHost + ":" + postalPort + "/parse",
 		Body:   string(reqJSON),
@@ -108,4 +120,36 @@ func postalServerParseAddress(address string) ([]parsedComponent, error) {
 		return nil, err
 	}
 	return p.Parts, nil
+}
+
+func checkPostalServerHealth() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if resp, err := amasshttp.RequestWebPage(ctx, &amasshttp.Request{
+		URL: "http://" + postalHost + ":" + postalPort + "/health",
+	}); err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		return false
+	}
+	return true
+}
+
+func isPostalServerAvailable() bool {
+	postalReqAvail <- struct{}{}
+	return <-postalResponseAvail
+}
+
+func postalServerHeartbeat() {
+	avail := checkPostalServerHealth()
+	t := time.NewTicker(10 * time.Second)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			avail = checkPostalServerHealth()
+		case <-postalReqAvail:
+			postalResponseAvail <- avail
+		}
+	}
 }
