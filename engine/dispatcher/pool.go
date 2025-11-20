@@ -13,6 +13,7 @@ import (
 
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	oam "github.com/owasp-amass/open-asset-model"
+	"golang.org/x/net/publicsuffix"
 )
 
 type pipelineInstance struct {
@@ -248,8 +249,8 @@ func (p *pipelinePool) maybeAdjustFanout(e *et.Event) {
 	}
 
 	const (
-		sessionGrowThreshold = int64(5000) // tune for your workloads
-		maxFanout            = 8           // max buckets per session
+		sessionGrowThreshold = int64(1000)
+		maxFanout            = 8 // max buckets per session
 	)
 
 	p.mu.Lock()
@@ -390,19 +391,14 @@ func assetKeyOf(e *et.Event) string {
 		return ""
 	}
 
-	// Pseudo-code; you’ll want to branch on AssetType and inspect
-	// the underlying OAM message / entity payload:
-	//
-	//   switch at := inferAssetTypeFromEvent(e); at {
-	//   case oam.FQDN:
-	//       return oam.FQDNName(e.Entity)
-	//   case oam.IPAddr:
-	//       return oam.IPAddressString(e.Entity)
-	//   case oam.ASN:
-	//       return strconv.FormatInt(int64(oam.ASNNumber(e.Entity)), 10)
-	//   default:
-	//       return e.Entity.ID.String()
-	//   }
+	switch e.Entity.Asset.AssetType() {
+	case oam.FQDN:
+		if name := e.Entity.Asset.Key(); name != "" {
+			if dom, err := publicsuffix.EffectiveTLDPlusOne(name); err != nil {
+				return dom
+			}
+		}
+	}
 
-	return e.Entity.ID
+	return e.Entity.Asset.Key()
 }
