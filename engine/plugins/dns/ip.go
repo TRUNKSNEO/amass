@@ -101,7 +101,11 @@ func (d *dnsIP) lookup(e *et.Event, fqdn string, since time.Time) []*relIP {
 func (d *dnsIP) query(e *et.Event, name *dbt.Entity) []*relIP {
 	var ips []*relIP
 
-	fqdn := name.Asset.(*oamdns.FQDN)
+	fqdn, valid := name.Asset.(*oamdns.FQDN)
+	if !valid {
+		return ips
+	}
+
 	for _, qtype := range d.queries {
 		if rr, err := support.PerformQuery(fqdn.Name, qtype); err == nil {
 			if records := d.store(e, name, rr); len(records) > 0 {
@@ -167,7 +171,10 @@ func (d *dnsIP) store(e *et.Event, fqdn *dbt.Entity, rr []dns.RR) []*relIP {
 
 func (d *dnsIP) process(e *et.Event, name string, addrs []*relIP) {
 	for _, a := range addrs {
-		ip := a.ip.Asset.(*oamnet.IPAddress)
+		ip, valid := a.ip.Asset.(*oamnet.IPAddress)
+		if !valid {
+			continue
+		}
 
 		switch ip.Type {
 		case "IPv4":
