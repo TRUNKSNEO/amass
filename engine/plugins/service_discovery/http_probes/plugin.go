@@ -159,7 +159,11 @@ func (hp *httpProbing) store(e *et.Event, resp *http.Response, entity *dbt.Entit
 
 	var c *oamcert.TLSCertificate
 	if firstAsset != nil {
-		c = firstAsset.Asset.(*oamcert.TLSCertificate)
+		var valid bool
+		c, valid = firstAsset.Asset.(*oamcert.TLSCertificate)
+		if !valid {
+			return findings
+		}
 	}
 
 	portrel := &general.PortRelation{
