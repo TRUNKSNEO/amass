@@ -200,8 +200,15 @@ func (d *dnsReverse) createPTRAlias(e *et.Event, name string, ip *dbt.Entity) *d
 
 func (d *dnsReverse) process(e *et.Event, rev []*relRev) {
 	for _, r := range rev {
-		ip := r.ipFQDN.Asset.(*oamdns.FQDN)
-		target := r.target.Asset.(*oamdns.FQDN)
+		ip, valid := r.ipFQDN.Asset.(*oamdns.FQDN)
+		if !valid {
+			continue
+		}
+
+		target, valid := r.target.Asset.(*oamdns.FQDN)
+		if !valid {
+			continue
+		}
 
 		_ = e.Dispatcher.DispatchEvent(&et.Event{
 			Name:    target.Name,

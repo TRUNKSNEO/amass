@@ -132,7 +132,7 @@ func dnsQuery(msg *dns.Msg, r *pool.Pool) (*dns.Msg, error) {
 }
 
 func trustedResolvers() *pool.Pool {
-	timeout := 2 * time.Second
+	timeout := 250 * time.Millisecond
 	cpus := runtime.NumCPU()
 	// wildcard detector
 	serv := servers.NewNameserver("8.8.4.4")
