@@ -143,7 +143,7 @@ func trustedResolvers() *pool.Pool {
 	for _, r := range baselineResolvers {
 		servs = append(servs, servers.NewNameserver(r.address))
 	}
-	sel := selectors.NewRandom(timeout, servs...)
+	sel := selectors.NewRoundRobin(timeout, servs...)
 	//sel := selectors.NewAuthoritative(timeout, servers.NewNameserver)
 	conns := conn.New(cpus, sel)
 	return pool.New(0, sel, conns, nil)
