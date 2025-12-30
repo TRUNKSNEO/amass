@@ -172,7 +172,7 @@ func (s *Session) selectDBMS() error {
 			switch db.System {
 			case "postgres":
 				// Construct the connection string for a Postgres database.
-				s.dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", db.Host, db.Port, db.Username, db.Password, db.DBName)
+				s.dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s", db.Username, db.Password, db.Host, db.Port, db.DBName)
 				s.dbtype = postgres.Postgres
 			case "sqlite":
 				fallthrough
