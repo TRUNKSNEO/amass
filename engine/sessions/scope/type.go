@@ -30,6 +30,9 @@ type Scope struct {
 	locLock   sync.Mutex
 	locations map[string]oam.Asset
 
+	blLock    sync.Mutex
+	blacklist map[string]bool
+
 	//finLock      sync.Mutex
 	fingerprints map[string]map[string]*Fingerprint
 }
@@ -42,6 +45,7 @@ func New() *Scope {
 		networks:     make(map[string]oam.Asset),
 		autsystems:   make(map[int]oam.Asset),
 		locations:    make(map[string]oam.Asset),
+		blacklist:    make(map[string]bool),
 		fingerprints: make(map[string]map[string]*Fingerprint),
 	}
 }
@@ -60,6 +64,9 @@ func CreateFromConfigScope(config *config.Config) *Scope {
 	}
 	for _, asn := range config.Scope.ASNs {
 		scope.AddASN(asn)
+	}
+	for _, bl := range config.Scope.Blacklist {
+		scope.AddBlacklist(bl)
 	}
 	return scope
 }
