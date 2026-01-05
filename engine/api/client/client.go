@@ -20,12 +20,13 @@ import (
 	oam "github.com/owasp-amass/open-asset-model"
 )
 
-const maxBulkItems = 5000
+const MaxBulkItems = 5000
 
 type Client struct {
 	base       string
 	httpClient http.Client
 	wsClient   *websocket.Conn
+	done       chan struct{}
 }
 
 type CreateSessionResponse struct {
@@ -54,7 +55,16 @@ type BulkAddAssetsResponse struct {
 
 // NewClient returns a pointer to a Client struct for the specified server URL.
 func NewClient(url string) *Client {
-	return &Client{base: url, httpClient: http.Client{}}
+	return &Client{
+		base:       url,
+		httpClient: http.Client{},
+		done:       make(chan struct{}),
+	}
+}
+
+// Close terminates any open connections associated with the client.
+func (c *Client) Close() {
+	close(c.done)
 }
 
 // Creates a new session on the server with the provided configuration.
@@ -65,7 +75,7 @@ func (c *Client) CreateSession(config *config.Config) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.UUID{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		return uuid.UUID{}, fmt.Errorf("createSession: status=%s", resp.Status)
@@ -87,7 +97,7 @@ func (c *Client) ListSessions() ([]uuid.UUID, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("listSessions: status=%s", resp.Status)
@@ -117,7 +127,7 @@ func (c *Client) TerminateSession(token uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("terminateSession: status=%s", resp.Status)
@@ -133,7 +143,7 @@ func (c *Client) SessionStats(token uuid.UUID) (*et.SessionStats, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("getStats: status=%s", resp.Status)
@@ -163,7 +173,7 @@ func (c *Client) CreateAsset(token uuid.UUID, asset oam.Asset) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("addAssetTyped: status=%s", resp.Status)
@@ -181,8 +191,8 @@ func (c *Client) CreateAssetsBulk(token uuid.UUID, atype string, assets []oam.As
 	if atype == "" {
 		return 0, fmt.Errorf("CreateAssetsBulk: asset type required")
 	}
-	if len(assets) > maxBulkItems {
-		return 0, fmt.Errorf("CreateAssetsBulk: too many items; max=%d", maxBulkItems)
+	if len(assets) > MaxBulkItems {
+		return 0, fmt.Errorf("CreateAssetsBulk: too many items; max=%d", MaxBulkItems)
 	}
 
 	items := make([]json.RawMessage, 0, len(assets))
@@ -209,7 +219,7 @@ func (c *Client) CreateAssetsBulk(token uuid.UUID, atype string, assets []oam.As
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("addAssetsBulk: status=%s", resp.Status)
@@ -253,6 +263,10 @@ func (c *Client) Subscribe(token uuid.UUID) (<-chan string, error) {
 	go func() {
 		for {
 			select {
+			case <-c.done:
+				_ = c.wsClient.WriteMessage(websocket.CloseMessage,
+					websocket.FormatCloseMessage(websocket.CloseNormalClosure, "bye"))
+				return
 			case <-interrupt:
 				_ = c.wsClient.WriteMessage(websocket.CloseMessage,
 					websocket.FormatCloseMessage(websocket.CloseNormalClosure, "bye"))

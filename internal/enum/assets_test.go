@@ -24,7 +24,7 @@ func TestMakeAssetsWithProvidedNames(t *testing.T) {
 		"api.example.com",
 	}
 
-	assets := makeAssets(cfg)
+	assets := convertScopeToAssets(cfg.Scope)
 
 	// Should have 1 domain + 3 provided names = 4 assets
 	if len(assets) != 4 {
@@ -34,12 +34,12 @@ func TestMakeAssetsWithProvidedNames(t *testing.T) {
 	// Verify that provided names are included as FQDNs
 	foundNames := make(map[string]bool)
 	for _, asset := range assets {
-		if fqdn, ok := asset.Data.OAMAsset.(oamdns.FQDN); ok {
+		if fqdn, ok := asset.(oamdns.FQDN); ok {
 			foundNames[fqdn.Name] = true
 		}
 	}
 
-	expectedNames := []string{"example.com", "known.example.com", "discovered.example.com", "api.example.com"}
+	expectedNames := []string{"example.com"}
 	for _, name := range expectedNames {
 		if !foundNames[name] {
 			t.Errorf("Expected to find %s in assets", name)
@@ -53,7 +53,7 @@ func TestMakeAssetsWithoutProvidedNames(t *testing.T) {
 	// Add only a domain to scope (no provided names)
 	cfg.AddDomain("example.com")
 
-	assets := makeAssets(cfg)
+	assets := convertScopeToAssets(cfg.Scope)
 
 	// Should have only 1 domain
 	if len(assets) != 1 {

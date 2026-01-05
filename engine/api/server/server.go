@@ -159,7 +159,7 @@ func writeError(w http.ResponseWriter, status int, msg string, err error) {
 
 func readRawJSON(r *http.Request) (json.RawMessage, error) {
 	var raw json.RawMessage
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&raw); err != nil {
@@ -223,6 +223,9 @@ func (s *Server) PutAssets(ctx context.Context, sess et.Session, assets []oam.As
 	}
 	close(ch)
 
+	if failed != 0 {
+		s.log.Warn("some assets failed to ingest", "failed", failed, "total", len(assets))
+	}
 	return int64(len(assets)) - failed, nil
 }
 

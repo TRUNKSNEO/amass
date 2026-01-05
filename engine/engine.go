@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/owasp-amass/amass/v5/engine/api/graphql/server"
+	"github.com/owasp-amass/amass/v5/engine/api/server"
 	"github.com/owasp-amass/amass/v5/engine/dispatcher"
 	"github.com/owasp-amass/amass/v5/engine/plugins"
 	"github.com/owasp-amass/amass/v5/engine/registry"

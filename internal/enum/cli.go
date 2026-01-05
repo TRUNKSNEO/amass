@@ -17,9 +17,11 @@ import (
 	pb "github.com/cheggaaa/pb/v3"
 	"github.com/fatih/color"
 	"github.com/owasp-amass/amass/v5/config"
-	"github.com/owasp-amass/amass/v5/engine/api/graphql/client"
+	"github.com/owasp-amass/amass/v5/engine/api/client"
 	"github.com/owasp-amass/amass/v5/internal/afmt"
 	"github.com/owasp-amass/amass/v5/internal/tools"
+	oam "github.com/owasp-amass/open-asset-model"
+	oamdns "github.com/owasp-amass/open-asset-model/dns"
 )
 
 const (
@@ -178,13 +180,16 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 		url = cfg.EngineAPI.URL
 	}
 
-	client := client.NewClient(url)
-	token, err := client.CreateSession(cfg)
+	c := client.NewClient(url)
+	defer c.Close()
+
+	// Create a new enumeration session on the engine server
+	token, err := c.CreateSession(cfg)
 	if err != nil {
 		_, _ = afmt.R.Fprintf(color.Error, "Failed to create a session with the Amass engine: %v\n", err)
 		os.Exit(1)
 	}
-	defer client.TerminateSession(token)
+	defer func() { _ = c.TerminateSession(token) }()
 
 	logfile := args.Filepaths.LogFile
 	if logfile == "" {
@@ -201,16 +206,38 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	messages, err := client.Subscribe(token)
+	messages, err := c.Subscribe(token)
 	if err != nil {
 		_, _ = afmt.R.Fprintf(color.Error, "Failed to subscribe to the Amass engine log messages: %v\n", err)
 		os.Exit(1)
 	}
 
 	var count int
-	for _, a := range makeAssets(cfg) {
-		if err := client.CreateAsset(*a, token); err == nil {
+	// create all assets defined in the scope on the server
+	for _, a := range convertScopeToAssets(cfg.Scope) {
+		if _, err := c.CreateAsset(token, a); err == nil {
 			count++
+		}
+	}
+
+	// create the provided DNS names on the server using bulk transfer
+	var fcount int
+	var provFQDNs []oam.Asset
+	for _, a := range cfg.ProvidedNames {
+		fcount++
+		provFQDNs = append(provFQDNs, oamdns.FQDN{Name: a})
+
+		if fcount == client.MaxBulkItems {
+			if stored, err := c.CreateAssetsBulk(token, string(oam.FQDN), provFQDNs); err == nil {
+				count += stored
+			}
+			fcount = 0
+			provFQDNs = provFQDNs[:0]
+		}
+	}
+	if fcount > 0 {
+		if stored, err := c.CreateAssetsBulk(token, string(oam.FQDN), provFQDNs); err == nil {
+			count += stored
 		}
 	}
 
@@ -232,7 +259,7 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 			case message := <-messages:
 				tools.WriteLogMessage(l, message)
 			case <-t.C:
-				if stats, err := client.SessionStats(token); err == nil {
+				if stats, err := c.SessionStats(token); err == nil {
 					if !args.Options.Silent {
 						progress.SetTotal(int64(stats.WorkItemsTotal))
 						progress.SetCurrent(int64(stats.WorkItemsCompleted))
