@@ -7,6 +7,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gorilla/mux"
 	et "github.com/owasp-amass/amass/v5/engine/types"
+	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
 	oamacct "github.com/owasp-amass/open-asset-model/account"
 	oamcert "github.com/owasp-amass/open-asset-model/certificate"
@@ -92,13 +94,12 @@ Routes (v1)
 
 POST   /v1/sessions
 GET	   /v1/sessions/list
-DELETE /v1/sessions/{session_id}
-GET    /v1/sessions/{session_id}/stats
+DELETE /v1/sessions/{session_token}
+GET    /v1/sessions/{session_token}/stats
 
-POST   /v1/sessions/{session_id}/assets/{asset_type}
-POST   /v1/sessions/{session_id}/assets/{asset_type}:bulk
-
-GET    /v1/sessions/{session_id}/ws/logs
+POST   /v1/sessions/{session_token}/assets/{asset_type}
+POST   /v1/sessions/{session_token}/assets/{asset_type}:bulk
+GET    /v1/sessions/{session_token}/ws/logs
 */
 func (s *Server) routes(r *mux.Router) {
 	r.Use(s.loggingMiddleware)
@@ -111,18 +112,17 @@ func (s *Server) routes(r *mux.Router) {
 	})
 
 	v1 := r.PathPrefix("/v1").Subrouter()
-
 	sessions := v1.PathPrefix("/sessions").Subrouter()
 	sessions.HandleFunc("", s.createSessionHandler).Methods(http.MethodPost)
 	sessions.HandleFunc("/list", s.listSessionsHandler).Methods(http.MethodGet)
 
-	session := sessions.PathPrefix("/{" + uuidRE + "}").Subrouter()
+	session := sessions.PathPrefix("/{session_token:" + uuidRE + "}").Subrouter()
 	session.HandleFunc("", s.terminateSessionHandler).Methods(http.MethodDelete)
 	session.HandleFunc("/stats", s.getStatsHandler).Methods(http.MethodGet)
-	assets := session.PathPrefix("/assets").Subrouter()
 
+	assets := session.PathPrefix("/assets").Subrouter()
 	// Single add: type in path (since OAM payload does not include it)
-	assets.HandleFunc("/{"+assetTypeRE+"}", s.addAssetTypedHandler).Methods(http.MethodPost)
+	assets.HandleFunc("/{asset_type:"+assetTypeRE+"}", s.addAssetTypedHandler).Methods(http.MethodPost)
 	// Bulk add: :bulk suffix
 	assets.HandleFunc("/{"+assetTypeRE+"}:bulk", s.addAssetsBulkHandler).Methods(http.MethodPost)
 
@@ -136,6 +136,7 @@ func (s *Server) routes(r *mux.Router) {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
+
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(true)
 	_ = enc.Encode(v)
@@ -147,10 +148,12 @@ func writeError(w http.ResponseWriter, status int, msg string, err error) {
 		Details string `json:"details,omitempty"`
 		Code    int    `json:"code"`
 	}
+
 	out := resp{Error: msg, Code: status}
 	if err != nil {
 		out.Details = err.Error()
 	}
+
 	writeJSON(w, status, out)
 }
 
@@ -174,22 +177,53 @@ func looksLikeJSONObject(raw json.RawMessage) bool {
 	return strings.HasPrefix(s, "{") && strings.HasSuffix(s, "}")
 }
 
-func (s *Server) PutAsset(ctx context.Context, rec oam.Asset) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+func (s *Server) PutAsset(ctx context.Context, sess et.Session, asset oam.Asset) (string, error) {
+	filter, err := defaultContentFilter(asset)
+	if err != nil {
+		return "", err
 	}
-	return nil
+
+	entity, err := sess.DB().FindOneEntityByContent(ctx, asset.AssetType(), time.Time{}, filter)
+	if err != nil {
+		entity, err = sess.DB().CreateAsset(ctx, asset)
+		if err != nil {
+			return entity.ID, err
+		}
+	}
+
+	// Create and schedule new event
+	event := &et.Event{
+		Name:       asset.Key(),
+		Entity:     entity,
+		Dispatcher: s.dis,
+		Session:    sess,
+	}
+
+	if err := s.dis.DispatchEvent(event); err != nil {
+		return "", err
+	}
+	return entity.ID, nil
 }
 
-func (s *Server) PutAssets(ctx context.Context, recs []oam.Asset) (int, error) {
-	select {
-	case <-ctx.Done():
-		return 0, ctx.Err()
-	default:
+func (s *Server) PutAssets(ctx context.Context, sess et.Session, assets []oam.Asset) (int64, error) {
+	ch := make(chan error, 100)
+
+	for _, asset := range assets {
+		go func(a oam.Asset) {
+			_, err := s.PutAsset(ctx, sess, a)
+			ch <- err
+		}(asset)
 	}
-	return len(recs), nil
+
+	var failed int64
+	for range assets {
+		if err := <-ch; err != nil {
+			failed++
+		}
+	}
+	close(ch)
+
+	return int64(len(assets)) - failed, nil
 }
 
 func parseAsset(atype string, j json.RawMessage) (oam.Asset, error) {
@@ -280,4 +314,53 @@ func parseAsset(atype string, j json.RawMessage) (oam.Asset, error) {
 		return &a, err
 	}
 	return nil, fmt.Errorf("unknown asset type: %s", atype)
+}
+
+func defaultContentFilter(asset oam.Asset) (dbt.ContentFilters, error) {
+	switch asset.AssetType() {
+	case oam.Account:
+		return dbt.ContentFilters{"unique_id": asset.Key()}, nil
+	case oam.AutnumRecord:
+		return dbt.ContentFilters{"handle": asset.Key()}, nil
+	case oam.AutonomousSystem:
+		return dbt.ContentFilters{"number": asset.Key()}, nil
+	case oam.ContactRecord:
+		return dbt.ContentFilters{"discovered_at": asset.Key()}, nil
+	case oam.DomainRecord:
+		return dbt.ContentFilters{"domain": asset.Key()}, nil
+	case oam.File:
+		return dbt.ContentFilters{"url": asset.Key()}, nil
+	case oam.FQDN:
+		return dbt.ContentFilters{"name": asset.Key()}, nil
+	case oam.FundsTransfer:
+		return dbt.ContentFilters{"unique_id": asset.Key()}, nil
+	case oam.Identifier:
+		return dbt.ContentFilters{"unique_id": asset.Key()}, nil
+	case oam.IPAddress:
+		return dbt.ContentFilters{"address": asset.Key()}, nil
+	case oam.IPNetRecord:
+		return dbt.ContentFilters{"handle": asset.Key()}, nil
+	case oam.Location:
+		return dbt.ContentFilters{"address": asset.Key()}, nil
+	case oam.Netblock:
+		return dbt.ContentFilters{"cidr": asset.Key()}, nil
+	case oam.Organization:
+		return dbt.ContentFilters{"unique_id": asset.Key()}, nil
+	case oam.Person:
+		return dbt.ContentFilters{"unique_id": asset.Key()}, nil
+	case oam.Phone:
+		return dbt.ContentFilters{"e164": asset.Key()}, nil
+	case oam.Product:
+		return dbt.ContentFilters{"unique_id": asset.Key()}, nil
+	case oam.ProductRelease:
+		return dbt.ContentFilters{"name": asset.Key()}, nil
+	case oam.Service:
+		return dbt.ContentFilters{"unique_id": asset.Key()}, nil
+	case oam.TLSCertificate:
+		return dbt.ContentFilters{"serial_number": asset.Key()}, nil
+	case oam.URL:
+		return dbt.ContentFilters{"url": asset.Key()}, nil
+	}
+
+	return nil, errors.New("invalid asset type")
 }

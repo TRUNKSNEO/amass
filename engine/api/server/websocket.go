@@ -21,7 +21,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func (s *Server) wsLogsHandler(w http.ResponseWriter, r *http.Request) {
-	sid := mux.Vars(r)["session_id"]
+	sid := mux.Vars(r)["session_token"]
 
 	// Check if the session token is valid
 	token, err := uuid.Parse(sid)

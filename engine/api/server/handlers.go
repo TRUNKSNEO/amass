@@ -13,18 +13,22 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/owasp-amass/amass/v5/config"
 	oam "github.com/owasp-amass/open-asset-model"
 )
 
 const maxBulkItems = 5000
 
 type CreateSessionResponse struct {
-	SessionID string    `json:"session_id"`
-	Created   time.Time `json:"created_at"`
+	SessionToken string `json:"sessionToken"`
 }
 
 type ListSessionsResponse struct {
-	SessionIDs []string `json:"session_ids"`
+	SessionTokens []string `json:"sessionTokens"`
+}
+
+type AddAssetResponse struct {
+	EntityID string `json:"entityID"`
 }
 
 // Bulk typed add: {"items":[ <OAM obj>, <OAM obj>, ... ]}
@@ -53,6 +57,36 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *Server) createSessionHandler(w http.ResponseWriter, r *http.Request) {
+	raw, err := readRawJSON(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON", err)
+		return
+	}
+	// minimal validation: ensure it’s valid JSON object
+	if !looksLikeJSONObject(raw) {
+		writeError(w, http.StatusBadRequest, "invalid JSON object", nil)
+		return
+	}
+
+	var config config.Config
+	if err := json.Unmarshal(raw, &config); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid configuration", err)
+		return
+	}
+	// Populate FROM/TO in transformations
+	for k, t := range config.Transformations {
+		_ = t.Split(k)
+	}
+
+	sess, err := s.mgr.NewSession(&config)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create session", err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, CreateSessionResponse{
+		SessionToken: sess.ID().String(),
+	})
 }
 
 func (s *Server) listSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +98,7 @@ func (s *Server) listSessionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var resp ListSessionsResponse
 	for _, sess := range sessions {
-		resp.SessionIDs = append(resp.SessionIDs, sess.ID().String())
+		resp.SessionTokens = append(resp.SessionTokens, sess.ID().String())
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -72,7 +106,7 @@ func (s *Server) listSessionsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) terminateSessionHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid := vars["session_id"]
+	sid := vars["session_token"]
 
 	// Check if the session token is valid
 	token, err := uuid.Parse(sid)
@@ -94,7 +128,7 @@ func (s *Server) terminateSessionHandler(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) getStatsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid := vars["session_id"]
+	sid := vars["session_token"]
 
 	// Check if the session token is valid
 	token, err := uuid.Parse(sid)
@@ -116,7 +150,7 @@ func (s *Server) getStatsHandler(w http.ResponseWriter, r *http.Request) {
 // Single typed add: raw OAM JSON in body, asset type in path.
 func (s *Server) addAssetTypedHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid := vars["session_id"]
+	sid := vars["session_token"]
 	assetType := strings.ToLower(strings.TrimSpace(vars["asset_type"]))
 
 	// Check if the session token is valid
@@ -144,22 +178,26 @@ func (s *Server) addAssetTypedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a, err := parseAsset(assetType, raw)
+	asset, err := parseAsset(assetType, raw)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid asset object", err)
 		return
 	}
 
-	if err := s.PutAsset(s.ctx, a); err != nil {
+	eid, err := s.PutAsset(s.ctx, sess, asset)
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to submit the asset", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, a)
+
+	writeJSON(w, http.StatusOK, AddAssetResponse{
+		EntityID: eid,
+	})
 }
 
 func (s *Server) addAssetsBulkHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid := vars["session_id"]
+	sid := vars["session_token"]
 	assetType := strings.ToLower(strings.TrimSpace(vars["asset_type"]))
 
 	// Check if the session token is valid
@@ -191,7 +229,7 @@ func (s *Server) addAssetsBulkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	recs := make([]oam.Asset, 0, len(req.Items))
+	assets := make([]oam.Asset, 0, len(req.Items))
 	for _, raw := range req.Items {
 		// minimal validation: ensure it’s valid JSON object
 		if !looksLikeJSONObject(raw) {
@@ -204,17 +242,16 @@ func (s *Server) addAssetsBulkHandler(w http.ResponseWriter, r *http.Request) {
 			// count as failed ingest, but continue
 			continue
 		}
-
-		recs = append(recs, a)
+		assets = append(assets, a)
 	}
 
-	ingested := int64(len(recs))
+	ingested := int64(len(assets))
 	if ingested == 0 {
 		writeError(w, http.StatusBadRequest, "no valid JSON objects in items", nil)
 		return
 	}
 
-	stored, err := s.PutAssets(s.ctx, recs)
+	stored, err := s.PutAssets(s.ctx, sess, assets)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, BulkAddAssetsResponse{
 			Ingested: ingested,
@@ -224,10 +261,10 @@ func (s *Server) addAssetsBulkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	failed := ingested - int64(stored)
+	failed := ingested - stored
 	writeJSON(w, http.StatusOK, BulkAddAssetsResponse{
 		Ingested: ingested,
-		Stored:   int64(stored),
+		Stored:   stored,
 		Failed:   failed,
 	})
 }
