@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -164,7 +165,7 @@ func (c *Client) SessionStats(token uuid.UUID) (*et.SessionStats, error) {
 
 // Creates a new asset on the server associated with the provided token.
 func (c *Client) CreateAsset(token uuid.UUID, asset oam.Asset) (string, error) {
-	atype := string(asset.AssetType())
+	atype := strings.ToLower(string(asset.AssetType()))
 	raw, err := asset.JSON()
 	if err != nil {
 		return "", err
@@ -194,6 +195,8 @@ func (c *Client) CreateAsset(token uuid.UUID, asset oam.Asset) (string, error) {
 
 // Creates multiple assets in bulk on the server associated with the provided token.
 func (c *Client) CreateAssetsBulk(token uuid.UUID, atype string, assets []oam.Asset) (int, error) {
+	atype = strings.ToLower(strings.TrimSpace(atype))
+
 	if atype == "" {
 		return 0, fmt.Errorf("CreateAssetsBulk: asset type required")
 	}
@@ -203,7 +206,7 @@ func (c *Client) CreateAssetsBulk(token uuid.UUID, atype string, assets []oam.As
 
 	items := make([]json.RawMessage, 0, len(assets))
 	for _, asset := range assets {
-		if atype != string(asset.AssetType()) {
+		if !strings.EqualFold(atype, string(asset.AssetType())) {
 			return 0, fmt.Errorf("CreateAssetsBulk: mixed asset types not allowed")
 		}
 
