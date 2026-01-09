@@ -113,7 +113,7 @@ func (b *BacklogDB) ClaimNext(ctx context.Context, atype oam.AssetType, owner st
 	}
 
 	var rows *sql.Rows
-	if ttl == 0 {
+	if ttl <= 0 {
 		rows, err = tx.QueryContext(ctx, `
 			SELECT id, entity_id
 			FROM backlog_items

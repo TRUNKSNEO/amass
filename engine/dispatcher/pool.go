@@ -79,8 +79,8 @@ func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, min, max int) 
 		lastBounds:      time.Now(),
 	}
 
-	go p.runPump()
 	p.ensureMinInstances()
+	go p.runPump()
 	return p
 }
 
@@ -196,9 +196,11 @@ func (p *pipelinePool) notePending(e *et.Event) {
 	if sid == "" {
 		return
 	}
+
 	p.mu.Lock()
 	p.pendingSessions[sid] = e.Session
 	p.mu.Unlock()
+
 	p.notifyCapacity()
 }
 
