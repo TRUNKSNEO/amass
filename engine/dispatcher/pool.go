@@ -80,6 +80,7 @@ func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, min, max int) 
 	}
 
 	go p.runPump()
+	p.ensureMinInstances()
 	return p
 }
 
@@ -90,6 +91,15 @@ func (p *pipelinePool) Dispatch(e *et.Event) error {
 	p.maybeScale()
 	p.maybeAdjustFanout(e)
 	return nil
+}
+
+func (p *pipelinePool) ensureMinInstances() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for len(p.instances) < p.minInstances {
+		p.createInstanceLocked()
+	}
 }
 
 func (p *pipelinePool) runPump() {

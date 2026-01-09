@@ -80,6 +80,7 @@ func CreateSession(cfg *config.Config) (et.Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.backlog.SetLeaseTTL(0)
 
 	s.log.Info("Session initialized")
 	s.log.Info("Temporary directory created", slog.String("dir", s.tmpdir))

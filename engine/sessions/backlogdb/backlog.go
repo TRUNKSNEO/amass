@@ -92,13 +92,14 @@ func (b *BacklogDB) ClaimNext(ctx context.Context, atype oam.AssetType, owner st
 	if owner == "" {
 		owner = "default"
 	}
-	if ttl <= 0 {
-		ttl = 30 * time.Second
-	}
 
 	now := nowUnix()
-	leaseUntil := now + int64(ttl.Seconds())
 	key := string(atype)
+	leaseUntil := now + int64(ttl.Seconds())
+	if ttl <= 0 {
+		ttl := 30 * time.Second
+		leaseUntil = now + int64(ttl.Seconds())
+	}
 
 	tx, err := b.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
@@ -111,18 +112,31 @@ func (b *BacklogDB) ClaimNext(ctx context.Context, atype oam.AssetType, owner st
 		return nil, err
 	}
 
-	rows, err := tx.QueryContext(ctx, `
-		SELECT id, entity_id
-		FROM backlog_items
-		WHERE etype = ?
-		  AND (
-				state = ?
-				OR (state = ? AND lease_until <= ?)
-			  )
-		ORDER BY created_at ASC
-		LIMIT ?`,
-		key, StateQueued, StateLeased, now, n,
-	)
+	var rows *sql.Rows
+	if ttl == 0 {
+		rows, err = tx.QueryContext(ctx, `
+			SELECT id, entity_id
+			FROM backlog_items
+			WHERE etype = ?
+			AND state = ?
+			ORDER BY created_at ASC
+			LIMIT ?`,
+			key, StateQueued, n,
+		)
+	} else {
+		rows, err = tx.QueryContext(ctx, `
+			SELECT id, entity_id
+			FROM backlog_items
+			WHERE etype = ?
+			AND (
+					state = ?
+					OR (state = ? AND lease_until <= ?)
+				)
+			ORDER BY created_at ASC
+			LIMIT ?`,
+			key, StateQueued, StateLeased, now, n,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}

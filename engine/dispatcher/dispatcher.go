@@ -124,7 +124,10 @@ func (d *dynamicDispatcher) DispatchEvent(e *et.Event) error {
 	if pool == nil {
 		return fmt.Errorf("no pipeline pool available for asset type %s", string(atype))
 	}
-	_ = pool.Dispatch(e)
+
+	if err := pool.Dispatch(e); err == nil {
+		return err
+	}
 
 	// increment the number of events in the session
 	if stats := e.Session.Stats(); stats != nil {
