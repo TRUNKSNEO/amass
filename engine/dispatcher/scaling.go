@@ -25,15 +25,20 @@ func (p *pipelinePool) activeSessionCountLocked() int {
 	if len(p.pendingSessions) == 0 && len(p.sessionQueued) == 0 {
 		return 0
 	}
-	set := make(map[string]struct{}, len(p.pendingSessions)+len(p.sessionQueued))
+
+	set := make(map[string]struct{},
+		len(p.pendingSessions)+len(p.sessionQueued))
+
 	for sid := range p.pendingSessions {
 		set[sid] = struct{}{}
 	}
+
 	for sid, q := range p.sessionQueued {
 		if q > 0 {
 			set[sid] = struct{}{}
 		}
 	}
+
 	return len(set)
 }
 
@@ -47,7 +52,6 @@ func (p *pipelinePool) recomputeBoundsLocked(totalQueued int64, avgQueued int64)
 	p.lastBounds = now
 
 	active := p.activeSessionCountLocked()
-
 	// If nothing is active, drift back toward baseline.
 	if active == 0 && totalQueued == 0 {
 		p.minInstances = p.baseMin
@@ -66,7 +70,6 @@ func (p *pipelinePool) recomputeBoundsLocked(totalQueued int64, avgQueued int64)
 	}
 
 	targetMax = clampInt(targetMax, p.baseMin, p.hardMax)
-
 	// Dynamic min: keep some warm capacity as sessions grow (but not 1:1).
 	warm := p.baseMin + (active+3)/4 // 1 extra instance per 4 active sessions
 	targetMin := clampInt(warm, p.baseMin, targetMax)
@@ -93,8 +96,15 @@ func (p *pipelinePool) maybeAdjustFanout(e *et.Event) {
 	}
 
 	const (
-		sessionGrowThreshold = int64(500)
+		fanoutInterval       = 2 * time.Second
+		sessionGrowThreshold = int64(100)
 	)
+
+	now := time.Now()
+	if now.Sub(p.lastFanout) < fanoutInterval {
+		return
+	}
+	p.lastFanout = now
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -124,9 +134,7 @@ func (p *pipelinePool) maybeAdjustFanout(e *et.Event) {
 	maxFanout := n / scount
 
 	fanout := p.sessionFanout[sid]
-	if fanout == 0 {
-		fanout = 1
-	}
+	fanout = max(fanout, 1)
 
 	newFanout := fanout * 2
 	newFanout = min(newFanout, maxFanout)

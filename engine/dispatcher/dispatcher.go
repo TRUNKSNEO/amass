@@ -161,10 +161,10 @@ func (d *dynamicDispatcher) getOrCreatePool(atype oam.AssetType) *pipelinePool {
 func assetTypeToPoolMinMax(atype oam.AssetType) (int, int) {
 	switch atype {
 	case oam.FQDN:
-		return 4, 128
+		return 4, 32
 	case oam.IPAddress:
-		return 4, 128
+		return 4, 32
 	default:
-		return 1, 32
+		return 1, 4
 	}
 }

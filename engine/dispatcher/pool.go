@@ -32,47 +32,33 @@ type pipelinePool struct {
 	// session fan-out and load tracking
 	sessionFanout   map[string]int   // sessionID -> fanout factor (1 = no fanout)
 	sessionQueued   map[string]int64 // sessionID -> queued count across all instances
+	lastFanout      time.Time
 	lastScale       time.Time
 	pendingSessions map[string]et.Session
 	wake            chan struct{}
 	lastBounds      time.Time
 }
 
-func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, min, max int) *pipelinePool {
-	if min <= 0 {
-		min = 1
-	}
-	if max < min {
-		max = min
-	}
-
-	// hardMax: you can tune per asset type; keep it conservative
-	hard := max
-	switch atype {
-	case oam.FQDN, oam.IPAddress:
-		if hard < 256 {
-			hard = 256
-		} // example: allow growth beyond baseMax if needed
-	default:
-		if hard < 64 {
-			hard = 64
-		}
-	}
+func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, pmin, pmax int) *pipelinePool {
+	pmin = max(pmin, 1)
+	pmax = max(pmax, pmin)
+	hard := pmax * 2
 
 	p := &pipelinePool{
 		log:             dis.log,
 		dis:             dis,
 		reg:             dis.reg,
 		eventTy:         atype,
-		minInstances:    min,
-		maxInstances:    max,
-		baseMin:         min,
-		baseMax:         max,
+		minInstances:    pmin,
+		maxInstances:    pmax,
+		baseMin:         pmin,
+		baseMax:         pmax,
 		hardMax:         hard,
 		instances:       make(map[string]*pipelineInstance),
 		ring:            newHashRing(50),
 		sessionFanout:   make(map[string]int),
 		sessionQueued:   make(map[string]int64),
+		lastFanout:      time.Now(),
 		lastScale:       time.Now(),
 		pendingSessions: make(map[string]et.Session),
 		wake:            make(chan struct{}, 1),
