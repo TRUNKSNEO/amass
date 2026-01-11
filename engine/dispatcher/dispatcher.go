@@ -63,12 +63,11 @@ func (d *dynamicDispatcher) runEvents() {
 		}
 
 		select {
-		/*case <-scale.C:
-		for _, pool := range d.pools {
-			if pool.maybeScale() {
+		case <-scale.C:
+			for _, pool := range d.pools {
+				_ = pool.maybeScale()
 				pool.maybeAdjustFanout()
 			}
-		}*/
 		case e := <-d.cchan:
 			d.cqueue.Append(e)
 		case <-d.cqueue.Signal():
