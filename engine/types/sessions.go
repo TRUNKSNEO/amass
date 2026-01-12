@@ -68,7 +68,7 @@ type Backlog interface {
 }
 
 type SessionStats struct {
-	sync.Mutex
+	sync.RWMutex
 	WorkItemsCompleted int `json:"workItemsCompleted"`
 	WorkItemsTotal     int `json:"workItemsTotal"`
 }

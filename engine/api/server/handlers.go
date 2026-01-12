@@ -145,9 +145,9 @@ func (s *Server) getStatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	stats := sess.Stats()
 
-	stats.Lock()
+	stats.RLock()
 	writeJSON(w, http.StatusOK, stats)
-	stats.Unlock()
+	stats.RUnlock()
 }
 
 // Single typed add: raw OAM JSON in body, asset type in path.
