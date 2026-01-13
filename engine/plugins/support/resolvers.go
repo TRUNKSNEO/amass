@@ -111,7 +111,7 @@ func PerformQuery(name string, qtype uint16) ([]dns.RR, error) {
 		} else if err == ErrNameDoesNotExist || err == ErrNoRecordOfThisType {
 			return nil, err
 		} else {
-			time.Sleep(utils.ExponentialBackoff(i, 250*time.Millisecond))
+			time.Sleep(utils.ExponentialBackoff(i, 100*time.Millisecond))
 		}
 	}
 	return nil, errors.New("no valid answers")
