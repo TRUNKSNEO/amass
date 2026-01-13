@@ -68,7 +68,7 @@ func (pi *pipelineInstance) canAccept() bool {
 	if pi.draining.Load() {
 		return false
 	}
-	return pi.queued.Load() < pi.maxQueued
+	return pi.queued.Load() < pi.parent.limits.MaxQueued
 }
 
 func (pi *pipelineInstance) enqueue(e *et.Event) error {
@@ -102,7 +102,7 @@ func (pi *pipelineInstance) onDequeue() {
 	}
 
 	// Wake the pool pump when we are below lowWater
-	if qlen <= pi.lowWater {
+	if qlen <= pi.parent.limits.LowWater {
 		pi.parent.notifyCapacity()
 	}
 }

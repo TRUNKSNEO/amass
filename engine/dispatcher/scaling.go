@@ -115,7 +115,7 @@ func (p *pipelinePool) maybeScale(stats sessStatsMap) bool {
 	avg := total / int64(n)
 
 	// Scale up (within dynamic max)
-	if avg > instanceHighWater && n < p.maxInstances {
+	if avg > p.limits.HighWater && n < p.maxInstances {
 		p.log.Info("scaling up pipeline pool",
 			"atype", p.eventTy,
 			"from", n,
@@ -130,7 +130,7 @@ func (p *pipelinePool) maybeScale(stats sessStatsMap) bool {
 	}
 
 	// Scale down (respect dynamic min)
-	if avg < instanceLowWater && n > p.minInstances {
+	if avg < p.limits.LowWater && n > p.minInstances {
 		var count int
 		var best *pipelineInstance
 

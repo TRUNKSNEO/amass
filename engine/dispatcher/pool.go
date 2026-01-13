@@ -15,6 +15,13 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
+type poolLimits struct {
+	MaxQueued    int64
+	HighWater    int64
+	LowWater     int64
+	PerSessBurst int64
+}
+
 type pipelinePool struct {
 	sync.RWMutex
 	log     *slog.Logger
@@ -34,6 +41,7 @@ type pipelinePool struct {
 	// session fan-out and load tracking
 	sessionFanout map[string]int // sessionID -> fanout factor (1 = no fanout)
 	wake          chan struct{}
+	limits        *poolLimits
 }
 
 func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, pmin, pmax int) *pipelinePool {
@@ -55,6 +63,7 @@ func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, pmin, pmax int
 		ring:          newHashRing(50),
 		sessionFanout: make(map[string]int),
 		wake:          make(chan struct{}, 1),
+		limits:        limitsByAssetType(atype),
 	}
 
 	p.ensureMinInstances()
@@ -66,7 +75,7 @@ func newPipelinePool(dis *dynamicDispatcher, atype oam.AssetType, pmin, pmax int
 func (p *pipelinePool) Dispatch(e *et.Event) error {
 	// decide whether to fill work queues
 	inst := p.pickInstance(p.workShardKey(e))
-	if inst != nil && inst.queueLen() <= instanceLowWater {
+	if inst != nil && inst.queueLen() <= p.limits.LowWater {
 		p.notifyCapacity()
 	}
 	return nil
@@ -213,7 +222,7 @@ func (p *pipelinePool) hasCapacity(num int64) bool {
 	defer p.RUnlock()
 
 	for _, inst := range p.instances {
-		if inst.queueLen()+num <= instanceMaxQueued {
+		if inst.queueLen()+num <= p.limits.MaxQueued {
 			return true
 		}
 	}
@@ -226,10 +235,6 @@ func (p *pipelinePool) notifyCapacity() {
 	default:
 	}
 }
-
-// ----------------------------------------------------------------
-// ---------------- Helpers for session keys ----------------------
-// ----------------------------------------------------------------
 
 // sessionIDOf extracts a stable session identifier from an event.
 func sessionIDOf(e *et.Event) string {
@@ -264,4 +269,36 @@ func assetBucket(e *et.Event) string {
 	}
 
 	return e.Entity.Asset.Key()
+}
+
+func limitsByAssetType(atype oam.AssetType) *poolLimits {
+	switch atype {
+	case oam.FQDN:
+		fallthrough
+	case oam.IPAddress:
+		return &poolLimits{
+			MaxQueued:    200,
+			HighWater:    175,
+			LowWater:     100,
+			PerSessBurst: 10,
+		}
+	case oam.Service:
+		fallthrough
+	case oam.TLSCertificate:
+		fallthrough
+	case oam.URL:
+		return &poolLimits{
+			MaxQueued:    100,
+			HighWater:    75,
+			LowWater:     25,
+			PerSessBurst: 5,
+		}
+	}
+
+	return &poolLimits{
+		MaxQueued:    20,
+		HighWater:    15,
+		LowWater:     5,
+		PerSessBurst: 1,
+	}
 }
