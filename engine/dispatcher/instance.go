@@ -5,6 +5,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -12,7 +13,7 @@ import (
 	oam "github.com/owasp-amass/open-asset-model"
 )
 
-var ErrBackpressure = fmt.Errorf("backpressure")
+var ErrBackpressure = errors.New("backpressure")
 
 type pipelineInstance struct {
 	parent   *pipelinePool
