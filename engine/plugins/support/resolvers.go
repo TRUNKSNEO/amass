@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -23,8 +23,9 @@ import (
 )
 
 var (
-	ErrNameDoesNotExist   = errors.New("name does not exist")
-	ErrNoRecordOfThisType = errors.New("no record of this type")
+	ErrNameDoesNotExist     = errors.New("name does not exist")
+	ErrNoRecordOfThisType   = errors.New("no record of this type")
+	ErrFailedMaxDNSAttempts = errors.New("failed the maximum number of DNS attempts")
 )
 
 type baseline struct {
@@ -111,10 +112,10 @@ func PerformQuery(name string, qtype uint16) ([]dns.RR, error) {
 		} else if err == ErrNameDoesNotExist || err == ErrNoRecordOfThisType {
 			return nil, err
 		} else {
-			time.Sleep(utils.ExponentialBackoff(i, 100*time.Millisecond))
+			time.Sleep(utils.TruncatedExponentialBackoff(i, 200*time.Millisecond, 5*time.Second))
 		}
 	}
-	return nil, errors.New("no valid answers")
+	return nil, ErrFailedMaxDNSAttempts
 }
 
 func wildcardDetected(resp *dns.Msg, r *wildcards.Detector) bool {

@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -196,6 +196,11 @@ func (d *dnsSubs) query(e *et.Event, subdomain string) []*relSubs {
 			if records := d.store(e, subdomain, rr); len(records) > 0 {
 				alias = append(alias, records...)
 			}
+		} else if err == support.ErrFailedMaxDNSAttempts {
+			e.Session.Log().Warn(err.Error(), "fqdn", subdomain,
+				slog.Group("plugin", "name", d.plugin.name, "handler", d.name))
+			apex = i > 0
+			break
 		} else if i == 0 {
 			// do not continue if we failed to obtain the NS record
 			apex = false
@@ -220,6 +225,9 @@ func (d *dnsSubs) query(e *et.Event, subdomain string) []*relSubs {
 				if records := d.store(e, n, rr); len(records) > 0 {
 					results = append(results, records...)
 				}
+			} else if err == support.ErrFailedMaxDNSAttempts {
+				e.Session.Log().Warn(err.Error(), "fqdn", n,
+					slog.Group("plugin", "name", d.plugin.name, "handler", d.name))
 			}
 			ch <- results
 		}(name, subdomain, rch)

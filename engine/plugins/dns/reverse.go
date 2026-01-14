@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -117,6 +117,11 @@ func (d *dnsReverse) query(e *et.Event, ipstr string, ptr *dbt.Entity) []*relRev
 	if rr, err := support.PerformQuery(ipstr, dns.TypePTR); err == nil {
 		if records := d.store(e, ptr, rr); len(records) > 0 {
 			rev = append(rev, records...)
+		}
+	} else if err == support.ErrFailedMaxDNSAttempts {
+		if name, derr := dns.ReverseAddr(ipstr); derr == nil {
+			e.Session.Log().Warn(err.Error(), "fqdn", name,
+				slog.Group("plugin", "name", d.plugin.name, "handler", d.name))
 		}
 	}
 	return rev
