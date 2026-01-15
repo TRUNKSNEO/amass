@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -102,8 +102,11 @@ func (ro *relatedOrgs) lookup(e *et.Event, ident *dbt.Entity, since time.Time) [
 func (ro *relatedOrgs) query(e *et.Event, ident *dbt.Entity) []*dbt.Entity {
 	id := ident.Asset.(*general.Identifier)
 
-	parent, _ := org.GLEIFGetDirectParentRecord(id.ID)
-	children, _ := org.GLEIFGetDirectChildrenRecords(id.ID)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	parent, _ := org.GLEIFGetDirectParentRecord(ctx, id.ID)
+	children, _ := org.GLEIFGetDirectChildrenRecords(ctx, id.ID)
 	return ro.store(e, ident, parent, children)
 }
 

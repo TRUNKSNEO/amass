@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -28,11 +28,11 @@ func init() {
 }
 
 // GLEIFSearchFuzzyCompletions performs the fuzzy completion search for the given name.
-func GLEIFSearchFuzzyCompletions(name string) (*FuzzyCompletionsResponse, error) {
+func GLEIFSearchFuzzyCompletions(ctx context.Context, name string) (*FuzzyCompletionsResponse, error) {
 	u := "https://api.gleif.org/api/v1/fuzzycompletions?field=entity.legalName&q=" + url.QueryEscape(name)
 
-	_ = gleifLimit.Wait(context.TODO())
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: u})
+	_ = gleifLimit.Wait(ctx)
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: u})
 	if err != nil || resp.Body == "" {
 		msg := fmt.Sprintf("Failed to obtain the LEI record for %s: %s", name, err)
 		return nil, fmt.Errorf("GLEIFSearchFuzzyCompletions: %s", msg)
@@ -50,11 +50,11 @@ func GLEIFSearchFuzzyCompletions(name string) (*FuzzyCompletionsResponse, error)
 }
 
 // GLEIFGetLEIRecord retrieves the LEI record for the given identifier.
-func GLEIFGetLEIRecord(id string) (*LEIRecord, error) {
+func GLEIFGetLEIRecord(ctx context.Context, id string) (*LEIRecord, error) {
 	u := "https://api.gleif.org/api/v1/lei-records/" + id
 
-	_ = gleifLimit.Wait(context.TODO())
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: u})
+	_ = gleifLimit.Wait(ctx)
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: u})
 	if err != nil || resp.StatusCode != 200 || resp.Body == "" {
 		return nil, err
 	}
@@ -69,11 +69,11 @@ func GLEIFGetLEIRecord(id string) (*LEIRecord, error) {
 }
 
 // GLEIFGetDirectParentRecord retrieves the direct parent LEI record for the given identifier.
-func GLEIFGetDirectParentRecord(id string) (*LEIRecord, error) {
+func GLEIFGetDirectParentRecord(ctx context.Context, id string) (*LEIRecord, error) {
 	u := "https://api.gleif.org/api/v1/lei-records/" + id + "/direct-parent"
 
-	_ = gleifLimit.Wait(context.TODO())
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: u})
+	_ = gleifLimit.Wait(ctx)
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: u})
 	if err != nil || resp.StatusCode != 200 || resp.Body == "" {
 		return nil, err
 	}
@@ -88,15 +88,15 @@ func GLEIFGetDirectParentRecord(id string) (*LEIRecord, error) {
 }
 
 // GLEIFGetDirectChildrenRecords retrieves the direct children LEI records for the given identifier.
-func GLEIFGetDirectChildrenRecords(id string) ([]*LEIRecord, error) {
+func GLEIFGetDirectChildrenRecords(ctx context.Context, id string) ([]*LEIRecord, error) {
 	var children []*LEIRecord
 
 	last := 1
 	link := "https://api.gleif.org/api/v1/lei-records/" + id + "/direct-children"
 	for i := 1; i <= last && link != ""; i++ {
-		_ = gleifLimit.Wait(context.TODO())
+		_ = gleifLimit.Wait(ctx)
 
-		resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: link})
+		resp, err := http.RequestWebPage(ctx, &http.Request{URL: link})
 		if err != nil || resp.StatusCode != 200 || resp.Body == "" {
 			return nil, err
 		}

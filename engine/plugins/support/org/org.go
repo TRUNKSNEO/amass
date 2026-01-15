@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -52,9 +52,6 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 		orgent = dedupChecks(session, obj, o)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
 	if orgent == nil {
 		name := strings.ToLower(o.Name)
 		id := &general.Identifier{
@@ -63,22 +60,35 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 			Type:     general.OrganizationName,
 		}
 
-		if ident, err := session.DB().CreateAsset(ctx, id); err == nil && ident != nil {
-			_, _ = session.DB().CreateEntityProperty(ctx, ident, &general.SourceProperty{
+		idctx, idcancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer idcancel()
+
+		if ident, err := session.DB().CreateAsset(idctx, id); err == nil && ident != nil {
+			_, _ = session.DB().CreateEntityProperty(idctx, ident, &general.SourceProperty{
 				Source:     src.Name,
 				Confidence: src.Confidence,
 			})
 
-			o.ID = determineOrgID(name)
-			orgent, err = session.DB().CreateAsset(ctx, o)
+			dctx, dcancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer dcancel()
+
+			o.ID = determineOrgID(dctx, name)
+
+			octx, ocancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer ocancel()
+
+			orgent, err = session.DB().CreateAsset(octx, o)
 			if err != nil || orgent == nil {
 				return nil, errors.New("failed to create the OAM Organization asset")
 			}
 
-			_, _ = session.DB().CreateEntityProperty(ctx, orgent, &general.SourceProperty{
+			_, _ = session.DB().CreateEntityProperty(octx, orgent, &general.SourceProperty{
 				Source:     src.Name,
 				Confidence: src.Confidence,
 			})
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
 
 			if err := createRelation(ctx, session, orgent, &general.SimpleRelation{Name: "id"}, ident, src); err != nil {
 				return nil, err
@@ -87,6 +97,9 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 	}
 
 	if obj != nil && rel != nil && orgent != nil && obj.ID != orgent.ID {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		if err := createRelation(ctx, session, obj, rel, orgent, src); err != nil {
 			return nil, err
 		}
@@ -95,10 +108,10 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 	return orgent, nil
 }
 
-func determineOrgID(name string) string {
+func determineOrgID(ctx context.Context, name string) string {
 	var rec *LEIRecord
 
-	if records, err := GLEIFSearchFuzzyCompletions(name); err == nil && records != nil && len(records.Data) > 0 {
+	if records, err := GLEIFSearchFuzzyCompletions(ctx, name); err == nil && records != nil && len(records.Data) > 0 {
 		swg := metrics.NewSmithWatermanGotoh()
 		swg.CaseSensitive = false
 		swg.GapPenalty = -0.1
@@ -127,7 +140,7 @@ func determineOrgID(name string) string {
 			}
 
 			if score > conf {
-				if r, err := GLEIFGetLEIRecord(lei); err == nil {
+				if r, err := GLEIFGetLEIRecord(ctx, lei); err == nil {
 					rec = r
 					conf = score
 				}

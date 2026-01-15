@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -75,7 +75,10 @@ func (fc *fuzzyCompletions) query(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
 	if leient := fc.plugin.orgEntityToLEI(e, orgent); leient != nil {
 		lei := leient.Asset.(*general.Identifier)
 
-		if r, err := org.GLEIFGetLEIRecord(lei.ID); err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if r, err := org.GLEIFGetLEIRecord(ctx, lei.ID); err == nil {
 			rec = r
 			conf = 100
 		}
@@ -85,7 +88,10 @@ func (fc *fuzzyCompletions) query(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
 		o := orgent.Asset.(*oamorg.Organization)
 		brand := org.ExtractBrandName(o.Name)
 
-		result, err := org.GLEIFSearchFuzzyCompletions(brand)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		result, err := org.GLEIFSearchFuzzyCompletions(ctx, brand)
 		if err != nil {
 			e.Session.Log().Error(err.Error(), slog.Group("plugin", "name", fc.plugin.name, "handler", fc.name))
 			return nil
@@ -130,8 +136,11 @@ func filterFuzzyCompletions(e *et.Event, orgent *dbt.Entity, brand string, m map
 				score += 30
 			}
 
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
 			lei := m[match]
-			if r, err := org.GLEIFGetLEIRecord(lei); err == nil {
+			if r, err := org.GLEIFGetLEIRecord(ctx, lei); err == nil {
 				if org.LocMatch(e, orgent, r) {
 					score += 40
 				}
@@ -162,8 +171,11 @@ func filterFuzzyCompletions(e *et.Event, orgent *dbt.Entity, brand string, m map
 				score += 30
 			}
 
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
 			lei := m[match]
-			if r, err := org.GLEIFGetLEIRecord(lei); err == nil {
+			if r, err := org.GLEIFGetLEIRecord(ctx, lei); err == nil {
 				if org.LocMatch(e, orgent, r) {
 					score += 40
 				}
