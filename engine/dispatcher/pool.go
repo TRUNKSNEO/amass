@@ -212,8 +212,11 @@ func (p *pipelinePool) pumpOnce() {
 		}
 
 		for _, ent := range entities {
+			a := ent.Asset
+			name := string(a.AssetType()) + ": " + a.Key()
+
 			event := &et.Event{
-				Name:       ent.Asset.Key(),
+				Name:       name,
 				Entity:     ent,
 				Dispatcher: p.dis,
 				Session:    s.Session,
