@@ -179,7 +179,7 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 		remaining := assets
 		assets = []*dbt.Entity{}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		for _, r := range remaining {
@@ -205,7 +205,7 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 			assets = []*dbt.Entity{}
 
 			for _, r := range remaining {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
 				if edges, err := session.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
@@ -247,7 +247,7 @@ func existsAndHasAncestorInSession(session et.Session, o *oamorg.Organization) (
 			assets = []*dbt.Entity{}
 
 			for _, r := range remaining {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
 				if edges, err := session.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {

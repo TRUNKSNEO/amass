@@ -148,7 +148,7 @@ func NameMatch(session et.Session, orgent *dbt.Entity, names []string) ([]string
 
 func orgsWithSameNames(session et.Session, names []string) ([]*dbt.Entity, error) {
 	var idents []*dbt.Entity
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	for _, n := range names {
