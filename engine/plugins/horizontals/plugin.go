@@ -325,8 +325,16 @@ func (h *horizPlugin) sweepAroundIPs(ctx context.Context, e *et.Event, nb *dbt.E
 */
 
 func (h *horizPlugin) submitIPAddresses(e *et.Event, asset *oamnet.IPAddress, src *et.Source) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// ensure we do not work on an IP address that was processed previously
+	_, err := e.Session.DB().FindEntitiesByContent(ctx, oam.IPAddress, e.Session.StartTime(), 1, dbt.ContentFilters{
+		"address": asset.Address.String(),
+	})
+	if err == nil {
+		return
+	}
 
 	addr, err := e.Session.DB().CreateAsset(ctx, asset)
 	if err == nil && addr != nil {

@@ -170,20 +170,10 @@ func AddNetblock(session et.Session, cidr string, asn int, src *et.Source) error
 }
 
 func IPAddressSweep(e *et.Event, addr *oamnet.IPAddress, src *et.Source, size int, callback SweepCallback) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// ensure we do not work on an IP address that was processed previously
-	_, err := e.Session.DB().FindEntitiesByContent(ctx, oam.IPAddress, e.Session.StartTime(), 1, dbt.ContentFilters{
-		"address": addr.Address.String(),
-	})
-	if err == nil {
-		return
-	}
-
 	var mask net.IPMask
 	addrstr := addr.Address.String()
 	ip := net.ParseIP(addrstr)
+
 	if amassnet.IsIPv4(ip) {
 		mask = net.CIDRMask(18, 32)
 	} else if amassnet.IsIPv6(ip) {
