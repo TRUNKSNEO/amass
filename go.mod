@@ -25,9 +25,9 @@ require (
 	github.com/miekg/dns v1.1.70
 	github.com/nyaruka/phonenumbers v1.6.8
 	github.com/openrdap/rdap v0.9.1
-	github.com/owasp-amass/asset-db v0.23.2-0.20260117065956-5ed3079b28e1
+	github.com/owasp-amass/asset-db v0.23.2-0.20260120072526-21733faf592e
 	github.com/owasp-amass/open-asset-model v0.15.0
-	github.com/owasp-amass/resolve v0.9.7-0.20260114031035-c1e9ccd12e45
+	github.com/owasp-amass/resolve v0.9.7-0.20260120073038-bc21c026637d
 	github.com/samber/slog-common v0.19.0
 	github.com/samber/slog-syslog/v2 v2.5.2
 	github.com/stretchr/testify v1.11.1
@@ -36,7 +36,7 @@ require (
 	golang.org/x/net v0.49.0
 	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.44.1
+	modernc.org/sqlite v1.44.2
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -54,7 +54,7 @@ require (
 	github.com/chromedp/chromedp v0.14.2 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
-	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.3.1 // indirect
 	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -83,7 +83,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4 // indirect
-	github.com/pierrec/lz4/v4 v4.1.24 // indirect
+	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
