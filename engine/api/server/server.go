@@ -97,7 +97,7 @@ POST   /v1/sessions
 GET	   /v1/sessions/list
 DELETE /v1/sessions/{session_token}
 GET    /v1/sessions/{session_token}/stats
-
+GET    /v1/sessions/{session_token}/scope/{asset_type}
 POST   /v1/sessions/{session_token}/assets/{asset_type}
 POST   /v1/sessions/{session_token}/assets/{asset_type}:bulk
 GET    /v1/sessions/{session_token}/ws/logs
@@ -120,6 +120,9 @@ func (s *Server) routes(r *mux.Router) {
 	session := sessions.PathPrefix("/{session_token:" + uuidRE + "}").Subrouter()
 	session.HandleFunc("", s.terminateSessionHandler).Methods(http.MethodDelete)
 	session.HandleFunc("/stats", s.getStatsHandler).Methods(http.MethodGet)
+
+	scope := session.PathPrefix("/scope").Subrouter()
+	scope.HandleFunc("/{asset_type:"+assetTypeRE+"}", s.getScopeHandler).Methods(http.MethodGet)
 
 	assets := session.PathPrefix("/assets").Subrouter()
 	// Single add: type in path (since OAM payload does not include it)

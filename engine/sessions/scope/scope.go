@@ -10,11 +10,11 @@ import (
 
 	oam "github.com/owasp-amass/open-asset-model"
 	oamcert "github.com/owasp-amass/open-asset-model/certificate"
-	"github.com/owasp-amass/open-asset-model/contact"
+	oamcon "github.com/owasp-amass/open-asset-model/contact"
 	oamdns "github.com/owasp-amass/open-asset-model/dns"
-	"github.com/owasp-amass/open-asset-model/general"
+	oamgen "github.com/owasp-amass/open-asset-model/general"
 	oamnet "github.com/owasp-amass/open-asset-model/network"
-	"github.com/owasp-amass/open-asset-model/org"
+	oamorg "github.com/owasp-amass/open-asset-model/org"
 	oamreg "github.com/owasp-amass/open-asset-model/registration"
 	oamurl "github.com/owasp-amass/open-asset-model/url"
 )
@@ -25,7 +25,7 @@ func (s *Scope) Add(a oam.Asset) bool {
 	switch v := a.(type) {
 	case *oamdns.FQDN:
 		newentry = s.AddFQDN(v)
-	case *general.Identifier:
+	case *oamgen.Identifier:
 		if domain, found := getEmailDomain(v); found {
 			newentry = s.AddFQDN(&oamdns.FQDN{Name: domain})
 		}
@@ -51,9 +51,9 @@ func (s *Scope) Add(a oam.Asset) bool {
 		} else {
 			newentry = s.AddDomain(v.Host)
 		}
-	case *org.Organization:
+	case *oamorg.Organization:
 		newentry = s.AddOrganization(v)
-	case *contact.Location:
+	case *oamcon.Location:
 		newentry = s.AddLocation(v)
 	}
 
@@ -72,7 +72,7 @@ func (s *Scope) IsAssetInScope(a oam.Asset, conf int) (oam.Asset, int) {
 	switch v := a.(type) {
 	case *oamdns.FQDN:
 		match, accuracy = s.matchesDomain(v)
-	case *general.Identifier:
+	case *oamgen.Identifier:
 		if domain, found := getEmailDomain(v); found {
 			match, accuracy = s.matchesDomain(&oamdns.FQDN{Name: domain})
 		}
@@ -85,22 +85,22 @@ func (s *Scope) IsAssetInScope(a oam.Asset, conf int) (oam.Asset, int) {
 	case *oamreg.DomainRecord:
 		match, accuracy = s.matchesDomain(&oamdns.FQDN{Name: v.Domain})
 		if match == nil || accuracy == 0 {
-			match, accuracy = s.matchesOrg(&org.Organization{Name: v.Name}, conf)
+			match, accuracy = s.matchesOrg(&oamorg.Organization{Name: v.Name}, conf)
 		}
 	case *oamreg.IPNetRecord:
 		match, accuracy = s.matchesNetblock(&oamnet.Netblock{CIDR: v.CIDR, Type: v.Type})
 	case *oamreg.AutnumRecord:
 		match, accuracy = s.matchesAutonomousSystem(&oamnet.AutonomousSystem{Number: v.Number})
 		if match == nil || accuracy == 0 {
-			match, accuracy = s.matchesOrg(&org.Organization{Name: v.Name}, conf)
+			match, accuracy = s.matchesOrg(&oamorg.Organization{Name: v.Name}, conf)
 		}
 	case *oamcert.TLSCertificate:
 		match, accuracy = s.matchesDomain(&oamdns.FQDN{Name: v.SubjectCommonName})
 	case *oamurl.URL:
 		match, accuracy = s.matchesDomain(&oamdns.FQDN{Name: v.Host})
-	case *org.Organization:
+	case *oamorg.Organization:
 		match, accuracy = s.matchesOrg(v, conf)
-	case *contact.Location:
+	case *oamcon.Location:
 		match, accuracy = s.matchesLocation(v, conf)
 	}
 
@@ -118,8 +118,8 @@ func (s *Scope) isBadField(field string) bool {
 	return false
 }
 
-func getEmailDomain(email *general.Identifier) (string, bool) {
-	if email == nil || email.Type != general.EmailAddress {
+func getEmailDomain(email *oamgen.Identifier) (string, bool) {
+	if email == nil || email.Type != oamgen.EmailAddress {
 		return "", false
 	}
 

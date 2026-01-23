@@ -16,6 +16,7 @@ import (
 	"github.com/caffix/stringset"
 	pb "github.com/cheggaaa/pb/v3"
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 	"github.com/owasp-amass/amass/v5/config"
 	"github.com/owasp-amass/amass/v5/engine/api/client"
 	"github.com/owasp-amass/amass/v5/internal/afmt"
@@ -297,6 +298,8 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 
 	if !args.Options.Silent {
 		progress.Finish()
+		fmt.Printf("\nSession Scope\n\n")
+		printScope(c, token)
 	}
 }
 
@@ -452,4 +455,18 @@ func (e Args) OverrideConfig(conf *config.Config) error {
 	// Attempt to add the provided domains to the configuration
 	conf.AddDomains(e.Domains.Slice()...)
 	return nil
+}
+
+func printScope(c *client.Client, token uuid.UUID) {
+	for _, atype := range oam.AssetList {
+		assets, err := c.SessionScope(token, atype)
+		if err != nil {
+			continue
+		}
+
+		fmt.Printf("%s:\n\n", atype)
+		for _, a := range assets {
+			fmt.Println(a.Key())
+		}
+	}
 }

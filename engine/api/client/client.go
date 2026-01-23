@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -167,9 +167,9 @@ func (c *Client) SessionStats(token uuid.UUID) (*et.SessionStats, error) {
 	if resp.StatusCode != http.StatusOK {
 		msg, err := readJSONError(resp)
 		if err != nil {
-			return nil, fmt.Errorf("getStats: status=%s", resp.Status)
+			return nil, fmt.Errorf("%s/stats: status=%s", token.String(), resp.Status)
 		}
-		return nil, fmt.Errorf("getStats: status=%s error=%s", resp.Status, msg)
+		return nil, fmt.Errorf("%s/stats: status=%s error=%s", token.String(), resp.Status, msg)
 	}
 
 	var st et.SessionStats
@@ -177,6 +177,30 @@ func (c *Client) SessionStats(token uuid.UUID) (*et.SessionStats, error) {
 		return nil, err
 	}
 	return &st, nil
+}
+
+// Retrieves scope for the session associated with the provided token.
+func (c *Client) SessionScope(token uuid.UUID, atype oam.AssetType) ([]oam.Asset, error) {
+	sessionID := token.String()
+	atypestr := strings.ToLower(string(atype))
+	u := fmt.Sprintf("%s/v1/sessions/%s/scope/%s", c.base, sessionID, atypestr)
+	req, _ := http.NewRequest(http.MethodGet, u, nil)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		msg, err := readJSONError(resp)
+		if err != nil {
+			return nil, fmt.Errorf("%s/scope: status=%s", token.String(), resp.Status)
+		}
+		return nil, fmt.Errorf("%s/scope: status=%s error=%s", token.String(), resp.Status, msg)
+	}
+
+	return decodeAssetsForScopeEndpoint(atype, resp.Body)
 }
 
 // Creates a new asset on the server associated with the provided token.

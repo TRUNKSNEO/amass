@@ -150,6 +150,74 @@ func (s *Server) getStatsHandler(w http.ResponseWriter, r *http.Request) {
 	stats.RUnlock()
 }
 
+func (s *Server) getScopeHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sid := vars["session_token"]
+	assetType := strings.ToLower(strings.TrimSpace(vars["asset_type"]))
+
+	// Check if the session token is valid
+	token, err := uuid.Parse(sid)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid session token", err)
+		return
+	}
+	// Check if the session exists
+	// and if the session is not already terminated
+	sess := s.mgr.GetSession(token)
+	if sess == nil {
+		writeError(w, http.StatusNotFound, "session not found", ErrNotFound)
+		return
+	}
+
+	var assets []oam.Asset
+	switch assetType {
+	case strings.ToLower(string(oam.AutonomousSystem)):
+		for _, a := range sess.Scope().AutonomousSystems() {
+			assets = append(assets, a)
+		}
+	case strings.ToLower(string(oam.FQDN)):
+		for _, a := range sess.Scope().FQDNs() {
+			assets = append(assets, a)
+		}
+	case strings.ToLower(string(oam.IPAddress)):
+		for _, a := range sess.Scope().IPAddresses() {
+			assets = append(assets, a)
+		}
+	case strings.ToLower(string(oam.Netblock)):
+		for _, a := range sess.Scope().Netblocks() {
+			assets = append(assets, a)
+		}
+	case strings.ToLower(string(oam.Location)):
+		for _, a := range sess.Scope().Locations() {
+			assets = append(assets, a)
+		}
+	case strings.ToLower(string(oam.Organization)):
+		for _, a := range sess.Scope().Organizations() {
+			assets = append(assets, a)
+		}
+	}
+
+	if len(assets) == 0 {
+		writeError(w, http.StatusNotFound,
+			"session scope not found for the selected asset type", ErrNotFound)
+		return
+	}
+
+	jsonArray := make([]json.RawMessage, len(assets))
+	for i, a := range assets {
+		if raw, err := a.JSON(); err == nil {
+			jsonArray[i] = json.RawMessage(raw)
+		}
+	}
+
+	response := struct {
+		Data []json.RawMessage `json:"data"`
+	}{
+		Data: jsonArray,
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
 // Single typed add: raw OAM JSON in body, asset type in path.
 func (s *Server) addAssetTypedHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
