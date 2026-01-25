@@ -18,8 +18,9 @@ import (
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
 	oamcert "github.com/owasp-amass/open-asset-model/certificate"
-	"github.com/owasp-amass/open-asset-model/contact"
-	"github.com/owasp-amass/open-asset-model/org"
+	oamcon "github.com/owasp-amass/open-asset-model/contact"
+	oamdns "github.com/owasp-amass/open-asset-model/dns"
+	oamorg "github.com/owasp-amass/open-asset-model/org"
 	oamreg "github.com/owasp-amass/open-asset-model/registration"
 	"golang.org/x/net/publicsuffix"
 )
@@ -168,12 +169,21 @@ func (s *Scope) assetsRelatedToAssetWithAssoc(assoc *dbt.Entity) []*dbt.Entity {
 			var found bool
 
 			switch v := a.Asset.(type) {
-			case *org.Organization:
+			case *oamdns.FQDN:
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+
+				since := s.ttlStartTime(oam.FQDN, oam.FQDN)
+				if ents, err := s.Session.DB().IncomingEdges(ctx, a, since, "node"); err != nil || len(ents) == 0 {
+					found = true
+					results = append(results, a)
+				}
+			case *oamorg.Organization:
 				found = true
 				if cert, ok := assoc.Asset.(*oamcert.TLSCertificate); !ok || s.orgNameSimilarToCommon(v, cert) {
 					results = append(results, a)
 				}
-			case *contact.Location:
+			case *oamcon.Location:
 				found = true
 				results = append(results, a)
 			}
@@ -428,7 +438,7 @@ func (s *Scope) ttlStartTime(from, to oam.AssetType) time.Time {
 	return time.Time{}
 }
 
-func (s *Scope) orgNameSimilarToCommon(o *org.Organization, cert *oamcert.TLSCertificate) bool {
+func (s *Scope) orgNameSimilarToCommon(o *oamorg.Organization, cert *oamcert.TLSCertificate) bool {
 	swg := metrics.NewSmithWatermanGotoh()
 	swg.CaseSensitive = false
 	swg.GapPenalty = -0.1
