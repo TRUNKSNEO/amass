@@ -55,7 +55,7 @@ func (d *dnsApex) check(e *et.Event) error {
 }
 
 func (d *dnsApex) store(e *et.Event, name string, fqdn, apex *dbt.Entity) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	if _, err := e.Session.DB().CreateEdge(ctx, &dbt.Edge{

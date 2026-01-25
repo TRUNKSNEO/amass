@@ -118,7 +118,7 @@ func (bu *bannerURLs) query(e *et.Event, asset *dbt.Entity) []*dbt.Entity {
 func (bu *bannerURLs) store(e *et.Event, urls []*oamurl.URL) []*dbt.Entity {
 	var assets []*dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	for _, u := range urls {

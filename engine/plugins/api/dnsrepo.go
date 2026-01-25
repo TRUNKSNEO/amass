@@ -126,8 +126,11 @@ func (d *dnsrepo) query(e *et.Event, name string, keys []string) []*dbt.Entity {
 			}
 		}
 
-		_ = d.rlimit.Wait(context.TODO())
-		if resp, err := http.RequestWebPage(context.TODO(), req); err == nil {
+		_ = d.rlimit.Wait(e.Session.Ctx())
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+		defer cancel()
+
+		if resp, err := http.RequestWebPage(ctx, req); err == nil {
 			if key == "" {
 				names = append(names, d.parseHTML(e, resp.Body)...)
 			} else {

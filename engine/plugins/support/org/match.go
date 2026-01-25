@@ -101,7 +101,7 @@ func NameMatch(session et.Session, orgent *dbt.Entity, names []string) ([]string
 		orgNames = append(orgNames, o.LegalName)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := session.DB().OutgoingEdges(ctx, orgent, time.Time{}, "id"); err == nil && len(edges) > 0 {
@@ -148,7 +148,7 @@ func NameMatch(session et.Session, orgent *dbt.Entity, names []string) ([]string
 
 func orgsWithSameNames(session et.Session, names []string) ([]*dbt.Entity, error) {
 	var idents []*dbt.Entity
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 2*time.Minute)
 	defer cancel()
 
 	for _, n := range names {

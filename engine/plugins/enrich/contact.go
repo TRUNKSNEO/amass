@@ -94,7 +94,7 @@ func (cr *contactrec) lookup(e *et.Event, entity *dbt.Entity, m *config.Matches)
 	sinces := make(map[string]time.Time)
 	conrec := entity.Asset.(*contact.ContactRecord)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, atype := range cr.transforms {

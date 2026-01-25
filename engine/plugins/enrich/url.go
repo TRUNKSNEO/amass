@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -123,7 +123,7 @@ func (u *urlexpand) lookup(e *et.Event, asset *dbt.Entity, m *config.Matches) []
 	rtypes := stringset.New()
 	defer rtypes.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	var findings []*support.Finding
@@ -181,7 +181,7 @@ func (u *urlexpand) store(e *et.Event, tstr string, asset *dbt.Entity, m *config
 	oamu := asset.Asset.(*url.URL)
 	var findings []*support.Finding
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if tstr == string(oam.FQDN) && m.IsMatch(string(oam.FQDN)) {

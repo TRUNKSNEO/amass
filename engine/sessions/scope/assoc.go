@@ -84,7 +84,7 @@ func (s *Scope) addScopeChangesToRationale(result *et.Association) {
 func (s *Scope) reviewAndUpdate(req *et.Association) []*dbt.Entity {
 	var assocs []*dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(s.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	since := s.ttlStartTime(oam.DomainRecord, oam.DomainRecord)
@@ -170,7 +170,7 @@ func (s *Scope) assetsRelatedToAssetWithAssoc(assoc *dbt.Entity) []*dbt.Entity {
 
 			switch v := a.Asset.(type) {
 			case *oamdns.FQDN:
-				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				ctx, cancel := context.WithTimeout(s.Session.Ctx(), 3*time.Second)
 				defer cancel()
 
 				since := s.ttlStartTime(oam.FQDN, oam.FQDN)
@@ -228,7 +228,7 @@ func (s *Scope) AssetsWithAssociation(asset *dbt.Entity) []*dbt.Entity {
 				results = append(results, a)
 			case *oamcert.TLSCertificate:
 				found = true
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx, cancel := context.WithTimeout(s.Session.Ctx(), 10*time.Second)
 				defer cancel()
 
 				// only certificates directly used by the services are considered
@@ -263,18 +263,6 @@ func (s *Scope) awayFromAssetsWithAssociation(assoc *dbt.Entity) ([]*dbt.Entity,
 		in = true
 		inRels = append(inRels, "node")
 		inSince = s.ttlStartTime(oam.FQDN, oam.FQDN)
-	case oam.IPAddress:
-		out = true
-		outRels = append(outRels, "ptr_record")
-		outSince = s.ttlStartTime(oam.IPAddress, oam.FQDN)
-	case oam.Netblock:
-		out = true
-		outRels = append(outRels, "contains")
-		outSince = s.ttlStartTime(oam.Netblock, oam.IPAddress)
-	case oam.AutonomousSystem:
-		out = true
-		outRels = append(outRels, "announces")
-		outSince = s.ttlStartTime(oam.AutonomousSystem, oam.Netblock)
 	case oam.DomainRecord:
 		out = true
 		outRels = append(outRels, "registrant_contact")
@@ -283,16 +271,10 @@ func (s *Scope) awayFromAssetsWithAssociation(assoc *dbt.Entity) ([]*dbt.Entity,
 		out = true
 		outRels = append(outRels, "registrant")
 		outSince = s.ttlStartTime(oam.IPNetRecord, oam.ContactRecord)
-		in = true
-		inRels = append(inRels, "registration")
-		inSince = s.ttlStartTime(oam.IPNetRecord, oam.Netblock)
 	case oam.AutnumRecord:
 		out = true
 		outRels = append(outRels, "registrant")
 		outSince = s.ttlStartTime(oam.AutnumRecord, oam.ContactRecord)
-		in = true
-		inRels = append(inRels, "registration")
-		inSince = s.ttlStartTime(oam.AutnumRecord, oam.AutonomousSystem)
 	case oam.TLSCertificate:
 		out = true
 		outRels = append(outRels, "subject_contact")
@@ -308,7 +290,7 @@ func (s *Scope) awayFromAssetsWithAssociation(assoc *dbt.Entity) ([]*dbt.Entity,
 
 	}
 	if out {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(s.Session.Ctx(), 10*time.Second)
 		defer cancel()
 
 		if edges, err := s.Session.DB().OutgoingEdges(ctx, assoc, outSince, outRels...); err == nil && len(edges) > 0 {
@@ -320,7 +302,7 @@ func (s *Scope) awayFromAssetsWithAssociation(assoc *dbt.Entity) ([]*dbt.Entity,
 		}
 	}
 	if in {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(s.Session.Ctx(), 10*time.Second)
 		defer cancel()
 
 		if edges, err := s.Session.DB().IncomingEdges(ctx, assoc, inSince, inRels...); err == nil && len(edges) > 0 {
@@ -349,12 +331,8 @@ func (s *Scope) towardsAssetsWithAssociation(asset *dbt.Entity) ([]*dbt.Entity, 
 		outRels = append(outRels, "registration")
 		outSince = s.ttlStartTime(oam.FQDN, oam.DomainRecord)
 		in = true
-		inRels = append(inRels, "node", "ptr_record")
-		since1 := s.ttlStartTime(oam.FQDN, oam.FQDN)
-		inSince = s.ttlStartTime(oam.FQDN, oam.IPAddress)
-		if !since1.IsZero() && since1.Before(inSince) {
-			inSince = since1
-		}
+		inRels = append(inRels, "node")
+		inSince = s.ttlStartTime(oam.FQDN, oam.FQDN)
 	case oam.IPAddress:
 		in = true
 		inRels = append(inRels, "contains")
@@ -400,7 +378,7 @@ func (s *Scope) towardsAssetsWithAssociation(asset *dbt.Entity) ([]*dbt.Entity, 
 		outSince = s.ttlStartTime(oam.Service, oam.TLSCertificate)
 	}
 	if out {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(s.Session.Ctx(), 10*time.Second)
 		defer cancel()
 
 		if edges, err := s.Session.DB().OutgoingEdges(ctx, asset, outSince, outRels...); err == nil && len(edges) > 0 {
@@ -412,7 +390,7 @@ func (s *Scope) towardsAssetsWithAssociation(asset *dbt.Entity) ([]*dbt.Entity, 
 		}
 	}
 	if in {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(s.Session.Ctx(), 10*time.Second)
 		defer cancel()
 
 		if edges, err := s.Session.DB().IncomingEdges(ctx, asset, inSince, inRels...); err == nil && len(edges) > 0 {

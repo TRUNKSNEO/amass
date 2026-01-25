@@ -60,7 +60,7 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 			Type:     general.OrganizationName,
 		}
 
-		idctx, idcancel := context.WithTimeout(context.Background(), 10*time.Second)
+		idctx, idcancel := context.WithTimeout(session.Ctx(), 10*time.Second)
 		defer idcancel()
 
 		if ident, err := session.DB().CreateAsset(idctx, id); err == nil && ident != nil {
@@ -69,12 +69,12 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 				Confidence: src.Confidence,
 			})
 
-			dctx, dcancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			dctx, dcancel := context.WithTimeout(session.Ctx(), 5*time.Minute)
 			defer dcancel()
 
 			o.ID = determineOrgID(dctx, name)
 
-			octx, ocancel := context.WithTimeout(context.Background(), 10*time.Second)
+			octx, ocancel := context.WithTimeout(session.Ctx(), 10*time.Second)
 			defer ocancel()
 
 			orgent, err = session.DB().CreateAsset(octx, o)
@@ -87,7 +87,7 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 				Confidence: src.Confidence,
 			})
 
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(session.Ctx(), 10*time.Second)
 			defer cancel()
 
 			if err := createRelation(ctx, session, orgent, &general.SimpleRelation{Name: "id"}, ident, src); err != nil {
@@ -97,7 +97,7 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 	}
 
 	if obj != nil && rel != nil && orgent != nil && obj.ID != orgent.ID {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(session.Ctx(), 10*time.Second)
 		defer cancel()
 
 		if err := createRelation(ctx, session, obj, rel, orgent, src); err != nil {

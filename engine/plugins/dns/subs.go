@@ -96,7 +96,7 @@ func (d *dnsSubs) registeredDomainName(e *et.Event) string {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	var rels []*dbt.Edge
@@ -161,7 +161,7 @@ func (d *dnsSubs) traverse(e *et.Event, dom string, fqdn *dbt.Entity, since time
 func (d *dnsSubs) lookup(e *et.Event, subdomain string, since time.Time) []*relSubs {
 	var alias []*relSubs
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	ents, err := e.Session.DB().FindEntitiesByContent(ctx, oam.FQDN, time.Time{}, 1, dbt.ContentFilters{
@@ -245,7 +245,7 @@ func (d *dnsSubs) query(e *et.Event, subdomain string) []*relSubs {
 func (d *dnsSubs) store(e *et.Event, name string, rr []dns.RR) []*relSubs {
 	var alias []*relSubs
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	fqdn, err := e.Session.DB().CreateAsset(ctx, &oamdns.FQDN{Name: name})

@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -72,7 +72,7 @@ func (ce *companyEnrich) check(e *et.Event) error {
 }
 
 func (ce *companyEnrich) lookup(e *et.Event, ident *dbt.Entity, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, since, "id"); err == nil {
@@ -105,8 +105,8 @@ func (ce *companyEnrich) query(e *et.Event, ident *dbt.Entity, apikey []string) 
 		headers := http.Header{"Content-Type": []string{"application/json"}}
 		headers["Authorization"] = []string{"Bearer " + key}
 
-		_ = ce.plugin.rlimit.Wait(context.TODO())
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		_ = ce.plugin.rlimit.Wait(e.Session.Ctx())
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 20*time.Second)
 		defer cancel()
 
 		u := fmt.Sprintf("https://data.api.aviato.co/company/enrich?id=%s", url.QueryEscape(oamid.ID))
@@ -155,7 +155,7 @@ func (ce *companyEnrich) store(e *et.Event, orgent *dbt.Entity, data *companyEnr
 	o.NonProfit = data.IsNonProfit
 	o.Headcount = data.Headcount
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	// attempt to set the legal name

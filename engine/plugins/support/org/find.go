@@ -64,7 +64,7 @@ func nameExistsInContactRecord(session et.Session, cr *dbt.Entity, names []strin
 		return nil, false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := session.DB().OutgoingEdges(ctx, cr, time.Time{}, "organization"); err == nil && len(edges) > 0 {
@@ -86,7 +86,7 @@ func nameRelatedToOrganization(session et.Session, orgent *dbt.Entity, names []s
 		return nil, false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := session.DB().IncomingEdges(ctx, orgent, time.Time{}, "subsidiary"); err == nil && len(edges) > 0 {
@@ -117,7 +117,7 @@ func nameRelatedToOrganization(session et.Session, orgent *dbt.Entity, names []s
 func existsAndSharesLocEntity(session et.Session, obj *dbt.Entity, o *oamorg.Organization) (*dbt.Entity, error) {
 	var locs []*dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := session.DB().OutgoingEdges(ctx, obj, time.Time{}, "legal_address", "hq_address", "location"); err == nil {
@@ -179,7 +179,7 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 		remaining := assets
 		assets = []*dbt.Entity{}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 		defer cancel()
 
 		for _, r := range remaining {
@@ -205,7 +205,7 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 			assets = []*dbt.Entity{}
 
 			for _, r := range remaining {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 				defer cancel()
 
 				if edges, err := session.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
@@ -247,7 +247,7 @@ func existsAndHasAncestorInSession(session et.Session, o *oamorg.Organization) (
 			assets = []*dbt.Entity{}
 
 			for _, r := range remaining {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 				defer cancel()
 
 				if edges, err := session.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {

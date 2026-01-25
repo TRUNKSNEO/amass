@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -96,7 +96,7 @@ func (r *netblock) lookup(e *et.Event, ip *dbt.Entity, since time.Time) (*dbt.En
 		return nil, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	edges, err := e.Session.DB().IncomingEdges(ctx, ip, since, "contains")
@@ -158,7 +158,7 @@ func (r *netblock) query(e *et.Event, ent *dbt.Entity) (*dbt.Entity, *dbt.Entity
 	ip := ent.Asset.(*oamnet.IPAddress)
 	addrstr := ip.Address.String()
 
-	record, err := r.plugin.whois(addrstr)
+	record, err := r.plugin.whois(e.Session.Ctx(), addrstr)
 	if err != nil || record == nil {
 		e.Session.Log().Error("failed to obtain a response from the WHOIS server", "err",
 			err.Error(), "argument", addrstr, slog.Group("plugin", "name", r.plugin.name, "handler", r.name))
@@ -174,7 +174,7 @@ func (r *netblock) store(e *et.Event, cidr netip.Prefix, ip *dbt.Entity, asn int
 		ntype = "IPv6"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	nb, err := e.Session.DB().CreateAsset(ctx, &oamnet.Netblock{

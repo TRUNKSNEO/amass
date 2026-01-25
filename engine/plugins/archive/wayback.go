@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -106,9 +106,13 @@ func (w *wayback) lookup(e *et.Event, name string, since time.Time) []*dbt.Entit
 }
 
 func (w *wayback) query(e *et.Event, name string) []*dbt.Entity {
-	_ = w.rlimit.Wait(context.TODO())
+	_ = w.rlimit.Wait(e.Session.Ctx())
 	end := fmt.Sprintf("*.%s/*", name)
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: w.URL + end})
+
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	defer cancel()
+
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: w.URL + end})
 	if err != nil {
 		return nil
 	}

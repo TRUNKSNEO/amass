@@ -65,9 +65,9 @@ func (r *autsys) lookup(e *et.Event, num string, since time.Time) *dbt.Entity {
 }
 
 func (r *autsys) query(e *et.Event, asset *dbt.Entity) (*dbt.Entity, *rdap.Autnum) {
-	_ = r.plugin.rlimit.Wait(context.TODO())
+	_ = r.plugin.rlimit.Wait(e.Session.Ctx())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	as := asset.Asset.(*network.AutonomousSystem)
@@ -114,7 +114,7 @@ func (r *autsys) store(e *et.Event, resp *rdap.Autnum, asset *dbt.Entity) *dbt.E
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	autasset, err := e.Session.DB().CreateAsset(ctx, autrec)

@@ -178,7 +178,7 @@ func (d *dnsPlugin) lookupWithinTTL(session et.Session, name string, atype oam.A
 		return results
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ents, err := session.DB().FindEntitiesByContent(ctx, oam.FQDN, time.Time{}, 1, dbt.ContentFilters{
@@ -236,7 +236,7 @@ func (d *dnsPlugin) lookupWithinTTL(session et.Session, name string, atype oam.A
 }
 
 func sweepCallback(e *et.Event, ip *oamnet.IPAddress, src *et.Source) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	// ensure we do not work on an IP address that was processed previously

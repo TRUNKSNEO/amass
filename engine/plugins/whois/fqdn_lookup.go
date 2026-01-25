@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -72,7 +72,7 @@ func (r *fqdnLookup) lookup(e *et.Event, name string, src *et.Source, since time
 }
 
 func (r *fqdnLookup) query(e *et.Event, name string, asset *dbt.Entity, src *et.Source) (*dbt.Entity, *whoisparser.WhoisInfo) {
-	_ = r.plugin.rlimit.Wait(context.TODO())
+	_ = r.plugin.rlimit.Wait(e.Session.Ctx())
 
 	resp, err := whoisclient.Whois(name)
 	if err != nil {
@@ -115,7 +115,7 @@ func (r *fqdnLookup) store(e *et.Event, resp string, asset *dbt.Entity, src *et.
 		dr.ExpirationDate = tstr
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	autasset, err := e.Session.DB().CreateAsset(ctx, dr)

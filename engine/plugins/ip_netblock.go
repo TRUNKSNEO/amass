@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -121,7 +121,7 @@ func (d *ipNetblock) store(e *et.Event, entry *sessions.CIDRangerEntry) (*dbt.En
 		netblock.Type = "IPv6"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	nb, err := e.Session.DB().CreateAsset(ctx, netblock)
@@ -200,7 +200,7 @@ func (d *ipNetblock) process(e *et.Event, ip, nb, as *dbt.Entity) {
 }
 
 func (d *ipNetblock) reservedAS(e *et.Event, netblock *oamnet.Netblock) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	nb, err := e.Session.DB().CreateAsset(ctx, netblock)

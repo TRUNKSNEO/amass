@@ -63,7 +63,7 @@ func (h *horfqdn) check(e *et.Event) error {
 
 		var assets []*dbt.Entity
 		for _, im := range impacted {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 			defer cancel()
 
 			if ents, err := e.Session.DB().FindEntitiesByContent(ctx,
@@ -76,7 +76,6 @@ func (h *horfqdn) check(e *et.Event) error {
 
 		if len(assets) > 0 {
 			h.plugin.process(e, since, assets)
-			h.plugin.addAssociatedRelationship(e, since, assocs)
 		}
 	}
 	return nil
@@ -95,7 +94,7 @@ func (h *horfqdn) lookup(e *et.Event, asset *dbt.Entity, conf int) []*et.Associa
 }
 
 func (h *horfqdn) store(e *et.Event, asset oam.Asset) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	a, err := e.Session.DB().CreateAsset(ctx, asset)

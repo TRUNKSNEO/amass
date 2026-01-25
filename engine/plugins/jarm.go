@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -87,7 +87,7 @@ func (j *jarmPlugin) check(e *et.Event) error {
 }
 
 func (j *jarmPlugin) hasCertificate(e *et.Event, since time.Time) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, e.Entity, since, "certificate"); err == nil && len(edges) > 0 {
@@ -111,7 +111,7 @@ type fingerprint struct {
 func (j *jarmPlugin) query(e *et.Event, since time.Time) {
 	var targets []*fingerprint
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, e.Entity, since); err == nil && len(edges) > 0 {
@@ -160,7 +160,7 @@ func (j *jarmPlugin) query(e *et.Event, since time.Time) {
 }
 
 func (j *jarmPlugin) store(e *et.Event, fps []*fingerprint) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	for _, fp := range fps {

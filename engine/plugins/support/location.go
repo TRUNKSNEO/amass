@@ -103,7 +103,7 @@ func postalServerParseAddress(address string) ([]parsedComponent, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	resp, err := amasshttp.RequestWebPage(ctx, &amasshttp.Request{

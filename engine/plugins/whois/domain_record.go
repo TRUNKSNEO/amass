@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -16,7 +16,6 @@ import (
 	"github.com/owasp-amass/amass/v5/engine/plugins/support"
 	"github.com/owasp-amass/amass/v5/engine/plugins/support/org"
 	et "github.com/owasp-amass/amass/v5/engine/types"
-	"github.com/owasp-amass/asset-db/repository"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
 	"github.com/owasp-amass/open-asset-model/contact"
@@ -91,7 +90,7 @@ func (r *domrec) lookup(e *et.Event, asset *dbt.Entity, src *et.Source, m *confi
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, asset, largest, rtypes...); err == nil && len(edges) > 0 {
@@ -144,7 +143,7 @@ func (r *domrec) store(e *et.Event, resp *whoisparser.WhoisInfo, asset *dbt.Enti
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	for _, ns := range resp.Domain.NameServers {
@@ -201,7 +200,7 @@ type domrecContact struct {
 }
 
 func (r *domrec) storeContact(e *et.Event, c *domrecContact, dr *dbt.Entity, m *config.Matches) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	cr, err := e.Session.DB().CreateAsset(ctx, &contact.ContactRecord{DiscoveredAt: c.DiscoveredAt})
@@ -226,13 +225,13 @@ func (r *domrec) storeContact(e *et.Event, c *domrecContact, dr *dbt.Entity, m *
 	if found {
 		if p := support.FullNameToPerson(wc.Name); p != nil && m.IsMatch(string(oam.Person)) {
 			if a, err := e.Session.DB().CreateAsset(ctx, p); err == nil && a != nil {
-				r.createSimpleEdge(e.Session.DB(), &general.SimpleRelation{Name: "person"}, cr, a)
+				r.createSimpleEdge(e.Session, &general.SimpleRelation{Name: "person"}, cr, a)
 			}
 		}
 	}
 	if loc := support.StreetAddressToLocation(addr); loc != nil {
 		if a, err := e.Session.DB().CreateAsset(ctx, loc); err == nil && a != nil {
-			r.createSimpleEdge(e.Session.DB(), &general.SimpleRelation{Name: "location"}, cr, a)
+			r.createSimpleEdge(e.Session, &general.SimpleRelation{Name: "location"}, cr, a)
 		}
 	}
 	if email := strings.ToLower(wc.Email); m.IsMatch(string(oam.Identifier)) && email != "" {
@@ -241,26 +240,26 @@ func (r *domrec) storeContact(e *et.Event, c *domrecContact, dr *dbt.Entity, m *
 			ID:       email,
 			Type:     general.EmailAddress,
 		}); err == nil && a != nil {
-			r.createSimpleEdge(e.Session.DB(), &general.SimpleRelation{Name: "id"}, cr, a)
+			r.createSimpleEdge(e.Session, &general.SimpleRelation{Name: "id"}, cr, a)
 		}
 	}
 	if m.IsMatch(string(oam.Phone)) {
 		if phone := support.PhoneToOAMPhone(wc.Phone, wc.PhoneExt, wc.Country); phone != nil {
 			phone.Type = contact.PhoneTypeRegular
 			if a, err := e.Session.DB().CreateAsset(ctx, phone); err == nil && a != nil {
-				r.createSimpleEdge(e.Session.DB(), &general.SimpleRelation{Name: "phone"}, cr, a)
+				r.createSimpleEdge(e.Session, &general.SimpleRelation{Name: "phone"}, cr, a)
 			}
 		}
 		if fax := support.PhoneToOAMPhone(wc.Fax, wc.FaxExt, wc.Country); fax != nil {
 			fax.Type = contact.PhoneTypeFax
 			if a, err := e.Session.DB().CreateAsset(ctx, fax); err == nil && a != nil {
-				r.createSimpleEdge(e.Session.DB(), &general.SimpleRelation{Name: "phone"}, cr, a)
+				r.createSimpleEdge(e.Session, &general.SimpleRelation{Name: "phone"}, cr, a)
 			}
 		}
 	}
 	if u := support.RawURLToOAM(wc.ReferralURL); u != nil && m.IsMatch(string(oam.URL)) {
 		if a, err := e.Session.DB().CreateAsset(ctx, u); err == nil && a != nil {
-			r.createSimpleEdge(e.Session.DB(), &general.SimpleRelation{Name: "url"}, cr, a)
+			r.createSimpleEdge(e.Session, &general.SimpleRelation{Name: "url"}, cr, a)
 		}
 	}
 
@@ -298,16 +297,16 @@ func (r *domrec) process(e *et.Event, findings []*support.Finding, src *et.Sourc
 	support.ProcessAssetsWithSource(e, findings, src, r.plugin.name, r.name)
 }
 
-func (r *domrec) createSimpleEdge(c repository.Repository, rel oam.Relation, from, to *dbt.Entity) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+func (r *domrec) createSimpleEdge(sess et.Session, rel oam.Relation, from, to *dbt.Entity) {
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 3*time.Second)
 	defer cancel()
 
-	if edge, err := c.CreateEdge(ctx, &dbt.Edge{
+	if edge, err := sess.DB().CreateEdge(ctx, &dbt.Edge{
 		Relation:   rel,
 		FromEntity: from,
 		ToEntity:   to,
 	}); err == nil && edge != nil {
-		_, _ = c.CreateEdgeProperty(ctx, edge, &general.SourceProperty{
+		_, _ = sess.DB().CreateEdgeProperty(ctx, edge, &general.SourceProperty{
 			Source:     r.plugin.source.Name,
 			Confidence: r.plugin.source.Confidence,
 		})

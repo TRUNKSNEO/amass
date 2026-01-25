@@ -93,7 +93,7 @@ func (d *dnsCNAME) query(e *et.Event, name *dbt.Entity) []*relAlias {
 func (d *dnsCNAME) store(e *et.Event, fqdn *dbt.Entity, rr []dns.RR) []*relAlias {
 	var alias []*relAlias
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	for _, record := range rr {

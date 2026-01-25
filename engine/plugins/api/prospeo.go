@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -123,23 +123,22 @@ func (p *Prospeo) query(e *et.Event, name string) []*dbt.Entity {
 		return nil
 	}
 
-	rcreds, err := p.accountType(key)
+	rcreds, err := p.accountType(e.Session.Ctx(), key)
 	if err != nil || key == "" {
 		return nil
 	}
 
-	count, err := p.count(name, key)
+	count, err := p.count(e.Session.Ctx(), name, key)
 	if err != nil {
 		return nil
 	}
+	limit := min(rcreds*50, count)
 
-	limit := rcreds * 50
-	if limit > count {
-		limit = count
-	}
+	_ = p.rlimit.Wait(e.Session.Ctx())
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+	defer cancel()
 
-	_ = p.rlimit.Wait(context.TODO())
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{
+	resp, err := http.RequestWebPage(ctx, &http.Request{
 		Method: "POST",
 		Body:   `{"company": "` + name + `", "limit": ` + strconv.Itoa(limit) + `}`,
 		URL:    p.queryurl,
@@ -175,10 +174,13 @@ func (p *Prospeo) process(e *et.Event, assets []*dbt.Entity) {
 	support.ProcessEmailsWithSource(e, assets, p.source)
 }
 
-func (p *Prospeo) accountType(key string) (int, error) {
-	_ = p.rlimit.Wait(context.TODO())
+func (p *Prospeo) accountType(ctx context.Context, key string) (int, error) {
+	_ = p.rlimit.Wait(ctx)
 
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{
+	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	resp, err := http.RequestWebPage(rctx, &http.Request{
 		Method: "POST",
 		URL:    p.accturl,
 		Header: http.Header{"Content-Type": []string{"application/json"}, "X-KEY": []string{key}},
@@ -198,10 +200,13 @@ func (p *Prospeo) accountType(key string) (int, error) {
 	return r.Response.RemainingCredits, nil
 }
 
-func (p *Prospeo) count(domain string, key string) (int, error) {
-	_ = p.rlimit.Wait(context.TODO())
+func (p *Prospeo) count(ctx context.Context, domain string, key string) (int, error) {
+	_ = p.rlimit.Wait(ctx)
 
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{
+	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	resp, err := http.RequestWebPage(rctx, &http.Request{
 		Method: "POST",
 		Body:   `{"domain": "` + domain + `"}`,
 		URL:    p.counturl,

@@ -124,7 +124,7 @@ func (d *dnsIP) query(e *et.Event, name *dbt.Entity) []*relIP {
 func (d *dnsIP) store(e *et.Event, fqdn *dbt.Entity, rr []dns.RR) []*relIP {
 	var ips []*relIP
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, record := range rr {

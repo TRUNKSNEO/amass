@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -91,7 +91,7 @@ func (r *autsys) check(e *et.Event) error {
 }
 
 func (r *autsys) lookup(e *et.Event, nb *dbt.Entity, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	edges, err := e.Session.DB().IncomingEdges(ctx, nb, since, "announces")
@@ -117,7 +117,7 @@ func (r *autsys) query(e *et.Event, nb *dbt.Entity) *dbt.Entity {
 	var asn int
 	arg := nb.Asset.Key()
 
-	if record, err := r.plugin.whois(arg); err == nil {
+	if record, err := r.plugin.whois(e.Session.Ctx(), arg); err == nil {
 		asn = record.ASN
 	} else {
 		e.Session.Log().Error("failed to obtain a response from the WHOIS server", "err",
@@ -150,7 +150,7 @@ func (r *autsys) checkCIDRanger(e *et.Event, cidr string, ip net.IP) (int, *et.S
 }
 
 func (r *autsys) store(e *et.Event, asn int, nb *dbt.Entity, src *et.Source) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	as, err := e.Session.DB().CreateAsset(ctx, &oamnet.AutonomousSystem{Number: asn})

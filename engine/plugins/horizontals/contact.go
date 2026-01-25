@@ -60,7 +60,6 @@ func (h *horContact) check(e *et.Event) error {
 
 		if len(impacted) > 0 {
 			h.plugin.process(e, since, impacted)
-			h.plugin.addAssociatedRelationship(e, since, assocs)
 		}
 	}
 	return nil
@@ -69,7 +68,7 @@ func (h *horContact) check(e *et.Event) error {
 func (h *horContact) lookup(e *et.Event, entity *dbt.Entity, since time.Time, conf int) []*et.Association {
 	labels := []string{"organization", "location", "id"}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	var results []*et.Association

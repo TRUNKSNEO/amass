@@ -50,7 +50,7 @@ func (ro *relatedOrgs) check(e *et.Event) error {
 func (ro *relatedOrgs) lookup(e *et.Event, ident *dbt.Entity, since time.Time) []*dbt.Entity {
 	var o *dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, since, "id"); err == nil {
@@ -102,7 +102,7 @@ func (ro *relatedOrgs) lookup(e *et.Event, ident *dbt.Entity, since time.Time) [
 func (ro *relatedOrgs) query(e *et.Event, ident *dbt.Entity) []*dbt.Entity {
 	id := ident.Asset.(*general.Identifier)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	parent, _ := org.GLEIFGetDirectParentRecord(ctx, id.ID)
@@ -126,7 +126,7 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *org.LEIReco
 			orgs = append(orgs, parentent)
 			ro.plugin.updateOrgFromLEIRecord(e, parentent, parent, ro.plugin.source.Confidence)
 			support.MarkAssetMonitored(e.Session, parentent, ro.plugin.source)
-			_ = ro.plugin.createRelation(context.Background(), e.Session, parentent,
+			_ = ro.plugin.createRelation(e.Session.Ctx(), e.Session, parentent,
 				&general.SimpleRelation{Name: "subsidiary"}, orgent, ro.plugin.source.Confidence)
 		}
 	}

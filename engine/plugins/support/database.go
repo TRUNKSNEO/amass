@@ -28,7 +28,7 @@ import (
 func SourceToAssetsWithinTTL(session et.Session, name, atype string, src *et.Source, since time.Time) []*dbt.Entity {
 	var entities []*dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	switch atype {
@@ -91,7 +91,7 @@ func StoreFQDNsWithSource(session et.Session, names []string, src *et.Source, pl
 		return results
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, name := range names {
@@ -116,7 +116,7 @@ func StoreEmailsWithSource(session et.Session, emails []string, src *et.Source, 
 		return results
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, e := range emails {
@@ -145,7 +145,7 @@ func MarkAssetMonitored(session et.Session, asset *dbt.Entity, src *et.Source) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if tags, err := session.DB().FindEntityTags(ctx, asset, time.Time{}, "last_monitored"); err == nil && len(tags) > 0 {
@@ -167,7 +167,7 @@ func AssetMonitoredWithinTTL(session et.Session, asset *dbt.Entity, src *et.Sour
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	if tags, err := session.DB().FindEntityTags(ctx, asset, since, "last_monitored"); err == nil && len(tags) > 0 {
@@ -184,7 +184,7 @@ func AssetMonitoredWithinTTL(session et.Session, asset *dbt.Entity, src *et.Sour
 func CreateServiceAsset(session et.Session, src *dbt.Entity, rel oam.Relation, serv *platform.Service, cert *oamcert.TLSCertificate) (*dbt.Entity, error) {
 	var srvs []*dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if rport, ok := rel.(*general.PortRelation); ok && src != nil && serv != nil {

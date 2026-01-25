@@ -198,7 +198,7 @@ func IPAddressSweep(e *et.Event, addr *oamnet.IPAddress, src *et.Source, size in
 }
 
 func IsCNAME(session et.Session, name *oamdns.FQDN) (*oamdns.FQDN, bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ents, err := session.DB().FindEntitiesByContent(ctx, oam.FQDN, time.Time{}, 1, dbt.ContentFilters{
@@ -223,7 +223,7 @@ func IsCNAME(session et.Session, name *oamdns.FQDN) (*oamdns.FQDN, bool) {
 }
 
 func NameIPAddresses(session et.Session, name *oamdns.FQDN) []*oamnet.IPAddress {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ents, err := session.DB().FindEntitiesByContent(ctx, oam.FQDN, time.Time{}, 1, dbt.ContentFilters{

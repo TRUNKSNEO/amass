@@ -22,7 +22,7 @@ import (
 )
 
 func (g *gleif) orgEntityToLEI(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, orgent, time.Time{}, "id"); err == nil {
@@ -38,7 +38,7 @@ func (g *gleif) orgEntityToLEI(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
 }
 
 func (g *gleif) leiToOrgEntity(e *et.Event, ident *dbt.Entity) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, time.Time{}, "id"); err == nil {
@@ -108,8 +108,11 @@ func (g *gleif) updateOrgFromLEIRecord(e *et.Event, orgent *dbt.Entity, lei *org
 	_ = g.addIdentifiersToOrg(e, orgent, general.OpenCorpID, []string{lei.Attributes.OCID}, conf)
 	_ = g.addIdentifiersToOrg(e, orgent, general.SPGlobalCompanyID, lei.Attributes.SPGlobal, conf)
 
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
+	defer cancel()
+
 	// update the Organization
-	if _, err := e.Session.DB().CreateEntity(context.Background(), orgent); err != nil {
+	if _, err := e.Session.DB().CreateEntity(ctx, orgent); err != nil {
 		msg := fmt.Sprintf("failed to update the Organization asset for %s: %s", o.Name, err)
 		e.Session.Log().Error(msg, slog.Group("plugin", "name", g.name, "handler", g.name))
 	}
@@ -121,7 +124,7 @@ func (g *gleif) addAddress(e *et.Event, orgent *dbt.Entity, rel oam.Relation, ad
 		return errors.New("failed to create location")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	a, err := e.Session.DB().CreateAsset(ctx, loc)
@@ -143,7 +146,7 @@ func (g *gleif) addAddress(e *et.Event, orgent *dbt.Entity, rel oam.Relation, ad
 }
 
 func (g *gleif) addIdentifiersToOrg(e *et.Event, orgent *dbt.Entity, idtype string, ids []string, conf int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	for _, id := range ids {

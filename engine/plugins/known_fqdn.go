@@ -75,7 +75,7 @@ func (d *knownFQDN) check(e *et.Event) error {
 }
 
 func (d *knownFQDN) lookup(e *et.Event, dom *dbt.Entity) []*dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	names, _ := db.FindByFQDNScope(ctx, e.Session.DB(), dom, time.Time{})

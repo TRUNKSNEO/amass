@@ -121,7 +121,7 @@ func (b *BacklogDB) ClaimNext(ctx context.Context, atype oam.AssetType, owner st
 	committed := false
 	defer func() {
 		if !committed {
-			_, _ = conn.ExecContext(context.Background(), `ROLLBACK;`)
+			_, _ = conn.ExecContext(ctx, `ROLLBACK;`)
 		}
 	}()
 

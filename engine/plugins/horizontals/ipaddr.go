@@ -49,7 +49,7 @@ func (h *horaddr) checkForPTR(e *et.Event, ip *oamnet.IPAddress, since time.Time
 		inscope = true
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if ptrs, err := e.Session.DB().OutgoingEdges(ctx, e.Entity, since, "ptr_record"); err == nil && len(ptrs) > 0 {

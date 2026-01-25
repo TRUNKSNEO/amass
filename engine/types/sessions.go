@@ -5,6 +5,7 @@
 package types
 
 import (
+	"context"
 	"log/slog"
 	"net"
 	"sync"
@@ -25,6 +26,7 @@ import (
 
 type Session interface {
 	ID() uuid.UUID
+	Ctx() context.Context
 	Log() *slog.Logger
 	PubSub() *pubsub.Logger
 	Config() *config.Config

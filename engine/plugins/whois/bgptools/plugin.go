@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -123,11 +123,14 @@ type bgpToolsRecord struct {
 	ASName        string
 }
 
-func (bt *bgpTools) whois(ipstr string) (*bgpToolsRecord, error) {
+func (bt *bgpTools) whois(ctx context.Context, ipstr string) (*bgpToolsRecord, error) {
 	addr := net.JoinHostPort(bt.addr, strconv.Itoa(bt.port))
 
-	_ = bt.rlimit.Wait(context.TODO())
-	conn, err := amassnet.DialContext(context.TODO(), "tcp", addr)
+	_ = bt.rlimit.Wait(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	conn, err := amassnet.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to establish a connection with the WHOIS server: %v", err)
 	}

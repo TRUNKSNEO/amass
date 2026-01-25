@@ -64,7 +64,7 @@ func (d *dnsTXT) lookup(e *et.Event, fqdn *dbt.Entity, since time.Time) []*oamdn
 		return props
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	if tags, err := e.Session.DB().FindEntityTags(ctx, fqdn, since, "dns_record"); err == nil {
@@ -98,7 +98,7 @@ func (d *dnsTXT) query(e *et.Event, name *dbt.Entity) []dns.RR {
 }
 
 func (d *dnsTXT) store(e *et.Event, fqdn *dbt.Entity, rr []dns.RR) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, record := range rr {

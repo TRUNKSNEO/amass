@@ -109,32 +109,6 @@ func (h *horizPlugin) Stop() {
 	h.log.Info("Plugin stopped")
 }
 
-func (h *horizPlugin) addAssociatedRelationship(e *et.Event, since time.Time, assocs []*et.Association) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	for _, assoc := range assocs {
-		for _, impacted := range assoc.ImpactedAssets {
-			conf := 50
-
-			if e.Session.Config().DefaultTransformations != nil {
-				if c := e.Session.Config().DefaultTransformations.Confidence; c > 0 {
-					conf = c
-				}
-			}
-
-			if match, result := e.Session.Scope().IsAssetInScope(impacted.Asset, conf); result >= conf && match != nil {
-				if ents, err := e.Session.DB().FindEntitiesByContent(ctx,
-					match.AssetType(), since, 1, assetToContentFilters(match)); err == nil {
-					for _, assoc2 := range e.Session.Scope().AssetsWithAssociation(ents[0]) {
-						h.makeAssocRelationshipEntries(e, assoc.Match, assoc2)
-					}
-				}
-			}
-		}
-	}
-}
-
 func assetToContentFilters(a oam.Asset) dbt.ContentFilters {
 	filters := dbt.ContentFilters{}
 
@@ -167,30 +141,8 @@ func assetToContentFilters(a oam.Asset) dbt.ContentFilters {
 	return filters
 }
 
-// TODO: this needs to be cleaned up
-func (h *horizPlugin) makeAssocRelationshipEntries(e *et.Event, assoc, assoc2 *dbt.Entity) {
-	// do not connect an asset to itself
-	if assoc.ID == assoc2.ID {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	_, _ = e.Session.DB().CreateEdge(ctx, &dbt.Edge{
-		Relation:   &oamgen.SimpleRelation{Name: "associated_with"},
-		FromEntity: assoc,
-		ToEntity:   assoc2,
-	})
-	_, _ = e.Session.DB().CreateEdge(ctx, &dbt.Edge{
-		Relation:   &oamgen.SimpleRelation{Name: "associated_with"},
-		FromEntity: assoc2,
-		ToEntity:   assoc,
-	})
-}
-
 func (h *horizPlugin) process(e *et.Event, since time.Time, assets []*dbt.Entity) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Minute)
 	defer cancel()
 
 	for _, asset := range assets {
@@ -341,7 +293,7 @@ func (h *horizPlugin) sweepAroundIPs(ctx context.Context, e *et.Event, nb *dbt.E
 */
 
 func (h *horizPlugin) submitIPAddress(e *et.Event, asset *oamnet.IPAddress, src *et.Source) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	// ensure we do not work on an IP address that was processed previously
@@ -367,7 +319,7 @@ func (h *horizPlugin) submitIPAddress(e *et.Event, asset *oamnet.IPAddress, src 
 }
 
 func (h *horizPlugin) submitFQDN(e *et.Event, dom string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	fqdn, err := e.Session.DB().CreateAsset(ctx, &oamdns.FQDN{Name: dom})

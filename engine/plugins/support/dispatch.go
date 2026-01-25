@@ -26,7 +26,7 @@ type Finding struct {
 }
 
 func ProcessAssetsWithSource(e *et.Event, findings []*Finding, src *et.Source, pname, hname string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, finding := range findings {
@@ -60,7 +60,7 @@ func ProcessFQDNsWithSource(e *et.Event, entities []*dbt.Entity, src *et.Source)
 			continue
 		}
 
-		_, _ = e.Session.DB().CreateEntityProperty(context.Background(), entity, &general.SourceProperty{
+		_, _ = e.Session.DB().CreateEntityProperty(e.Session.Ctx(), entity, &general.SourceProperty{
 			Source:     src.Name,
 			Confidence: src.Confidence,
 		})
@@ -92,7 +92,7 @@ func ProcessEmailsWithSource(e *et.Event, entities []*dbt.Entity, src *et.Source
 			}
 		}
 
-		_, _ = e.Session.DB().CreateEntityProperty(context.Background(), entity, &general.SourceProperty{
+		_, _ = e.Session.DB().CreateEntityProperty(e.Session.Ctx(), entity, &general.SourceProperty{
 			Source:     src.Name,
 			Confidence: src.Confidence,
 		})

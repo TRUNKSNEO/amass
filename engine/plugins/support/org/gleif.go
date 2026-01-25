@@ -123,7 +123,7 @@ func LocMatch(e *et.Event, orgent *dbt.Entity, rec *LEIRecord) bool {
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 2*time.Minute)
 	defer cancel()
 
 	legal_addr := rec.Attributes.Entity.LegalAddress

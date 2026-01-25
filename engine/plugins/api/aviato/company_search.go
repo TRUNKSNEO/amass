@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -68,7 +68,7 @@ func (cs *companySearch) check(e *et.Event) error {
 }
 
 func (cs *companySearch) lookup(e *et.Event, orgent *dbt.Entity, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, orgent, since, "id"); err == nil {
@@ -97,8 +97,8 @@ func (cs *companySearch) query(e *et.Event, orgent *dbt.Entity, apikey []string)
 		headers := http.Header{"Content-Type": []string{"application/json"}}
 		headers["Authorization"] = []string{"Bearer " + key}
 
-		_ = cs.plugin.rlimit.Wait(context.TODO())
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		_ = cs.plugin.rlimit.Wait(e.Session.Ctx())
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 20*time.Second)
 		defer cancel()
 
 		filters := []map[string]*dslEvalObj{
@@ -164,7 +164,7 @@ func (cs *companySearch) store(e *et.Event, orgent *dbt.Entity, companyID string
 		Type:     AviatoCompanyID,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ident, err := e.Session.DB().CreateAsset(ctx, oamid)

@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -104,8 +104,11 @@ func (ht *hackerTarget) lookup(e *et.Event, name string, since time.Time) []*dbt
 }
 
 func (ht *hackerTarget) query(e *et.Event, name string) []*dbt.Entity {
-	_ = ht.rlimit.Wait(context.TODO())
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: ht.url + name})
+	_ = ht.rlimit.Wait(e.Session.Ctx())
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+	defer cancel()
+
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: ht.url + name})
 	if err != nil {
 		return nil
 	}

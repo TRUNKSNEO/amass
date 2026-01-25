@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -75,7 +75,7 @@ func (ae *employees) check(e *et.Event) error {
 func (ae *employees) lookup(e *et.Event, ident *dbt.Entity, since time.Time) (*dbt.Entity, []*dbt.Entity) {
 	var orgent *dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, since, "id"); err == nil {
@@ -133,8 +133,8 @@ loop:
 			headers := http.Header{"Content-Type": []string{"application/json"}}
 			headers["Authorization"] = []string{"Bearer " + key}
 
-			_ = ae.plugin.rlimit.Wait(context.TODO())
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			_ = ae.plugin.rlimit.Wait(e.Session.Ctx())
+			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 20*time.Second)
 			defer cancel()
 
 			u := fmt.Sprintf("https://data.api.aviato.co/company/%s/employees?perPage=%d&page=%d", url.QueryEscape(oamid.ID), perPage, page)
@@ -189,7 +189,7 @@ loop:
 func (ae *employees) getAssociatedOrg(e *et.Event, ident *dbt.Entity) *dbt.Entity {
 	var orgent *dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, time.Time{}, "id"); err == nil {
@@ -209,7 +209,7 @@ func (ae *employees) getAssociatedOrg(e *et.Event, ident *dbt.Entity) *dbt.Entit
 func (ae *employees) store(e *et.Event, ident, orgent *dbt.Entity, employlist []employeeResult) []*dbt.Entity {
 	var employents []*dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, emp := range employlist {

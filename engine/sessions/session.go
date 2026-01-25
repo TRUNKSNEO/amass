@@ -5,6 +5,7 @@
 package sessions
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,6 +30,8 @@ import (
 
 type Session struct {
 	id       uuid.UUID
+	ctx      context.Context
+	cancel   context.CancelFunc
 	log      *slog.Logger
 	ps       *pubsub.Logger
 	cfg      *config.Config
@@ -54,9 +57,12 @@ func CreateSession(cfg *config.Config) (et.Session, error) {
 	}
 
 	startTime := time.Now()
+	ctx, cancel := context.WithCancel(context.Background())
 	// Create a new session object
 	s := &Session{
 		id:     uuid.New(),
+		ctx:    ctx,
+		cancel: cancel,
 		cfg:    cfg,
 		start:  startTime,
 		ranger: NewAmassRanger(),
@@ -92,6 +98,10 @@ func CreateSession(cfg *config.Config) (et.Session, error) {
 
 func (s *Session) ID() uuid.UUID {
 	return s.id
+}
+
+func (s *Session) Ctx() context.Context {
+	return s.ctx
 }
 
 func (s *Session) Log() *slog.Logger {
@@ -145,6 +155,8 @@ func (s *Session) Kill() {
 	default:
 	}
 	close(s.done)
+
+	s.cancel()
 	s.finished = true
 }
 

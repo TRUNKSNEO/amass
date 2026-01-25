@@ -84,7 +84,7 @@ func (sb *sessionBacklog) Has(e *dbt.Entity) bool {
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 2*time.Second)
 	defer cancel()
 
 	ok, err := sb.db.Has(ctx, e.ID)
@@ -112,7 +112,7 @@ func (sb *sessionBacklog) Enqueue(e *dbt.Entity) error {
 		return errors.New("asset type is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	return sb.db.Enqueue(ctx, atype, e.ID)
@@ -138,7 +138,7 @@ func (sb *sessionBacklog) EnqueueDone(e *dbt.Entity) error {
 		return errors.New("asset type is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	return sb.db.EnqueueDone(ctx, atype, e.ID)
@@ -158,7 +158,7 @@ func (sb *sessionBacklog) ClaimNext(atype oam.AssetType, num int) ([]*dbt.Entity
 		return nil, ErrNoEntitiesClaimed
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	owner := sb.owner + ":" + string(atype)
@@ -173,7 +173,7 @@ func (sb *sessionBacklog) ClaimNext(atype oam.AssetType, num int) ([]*dbt.Entity
 
 	results := make([]*dbt.Entity, 0, len(claims))
 	for _, c := range claims {
-		cctx, ccancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cctx, ccancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 		ent, ferr := sb.session.DB().FindEntityById(cctx, c.EntityID)
 		ccancel()
 
@@ -183,7 +183,7 @@ func (sb *sessionBacklog) ClaimNext(atype oam.AssetType, num int) ([]*dbt.Entity
 		}
 
 		// Entity missing from asset DB: ack the entity so it doesn't get claimed again.
-		actx, acancel := context.WithTimeout(context.Background(), 5*time.Second)
+		actx, acancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 		_ = sb.db.Ack(actx, c.EntityID, owner)
 		acancel()
 	}
@@ -204,7 +204,7 @@ func (sb *sessionBacklog) Ack(e *dbt.Entity, enforceOwner bool) error {
 		return errors.New("entity is nil or ID is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	owner := ""
@@ -228,7 +228,7 @@ func (sb *sessionBacklog) Release(e *dbt.Entity, atype oam.AssetType, enforceOwn
 		return errors.New("entity is nil or ID is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	owner := ""
@@ -248,7 +248,7 @@ func (sb *sessionBacklog) Delete(e *dbt.Entity) error {
 		return errors.New("entity is nil or ID is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	return sb.db.Delete(ctx, e.ID)
@@ -259,7 +259,7 @@ func (sb *sessionBacklog) Counts(atype oam.AssetType) (queued, leased, done int6
 		return 0, 0, 0, errors.New("backlog is nil")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(sb.session.Ctx(), 3*time.Second)
 	defer cancel()
 
 	return sb.db.Counts(ctx, atype)

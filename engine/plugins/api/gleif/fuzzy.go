@@ -50,7 +50,7 @@ func (fc *fuzzyCompletions) check(e *et.Event) error {
 }
 
 func (fc *fuzzyCompletions) lookup(e *et.Event, orgent *dbt.Entity, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, orgent, since, "id"); err == nil {
@@ -75,7 +75,7 @@ func (fc *fuzzyCompletions) query(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
 	if leient := fc.plugin.orgEntityToLEI(e, orgent); leient != nil {
 		lei := leient.Asset.(*general.Identifier)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 		defer cancel()
 
 		if r, err := org.GLEIFGetLEIRecord(ctx, lei.ID); err == nil {
@@ -88,7 +88,7 @@ func (fc *fuzzyCompletions) query(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
 		o := orgent.Asset.(*oamorg.Organization)
 		brand := org.ExtractBrandName(o.Name)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 		defer cancel()
 
 		result, err := org.GLEIFSearchFuzzyCompletions(ctx, brand)
@@ -136,7 +136,7 @@ func filterFuzzyCompletions(e *et.Event, orgent *dbt.Entity, brand string, m map
 				score += 30
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 			defer cancel()
 
 			lei := m[match]
@@ -171,7 +171,7 @@ func filterFuzzyCompletions(e *et.Event, orgent *dbt.Entity, brand string, m map
 				score += 30
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 			defer cancel()
 
 			lei := m[match]

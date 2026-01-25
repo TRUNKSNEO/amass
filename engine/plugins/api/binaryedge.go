@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -123,8 +123,11 @@ func (be *binaryEdge) query(e *et.Event, name string, keys []string) []*dbt.Enti
 loop:
 	for _, key := range keys {
 		for pagenum <= 500 {
-			_ = be.rlimit.Wait(context.TODO())
-			resp, err := http.RequestWebPage(context.TODO(), &http.Request{
+			_ = be.rlimit.Wait(e.Session.Ctx())
+			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+			defer cancel()
+
+			resp, err := http.RequestWebPage(ctx, &http.Request{
 				Header: http.Header{"X-KEY": []string{key}},
 				URL:    "https://api.binaryedge.io/v2/query/domains/subdomain/" + name + "?page=" + strconv.Itoa(pagenum),
 			})

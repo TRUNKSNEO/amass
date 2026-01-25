@@ -130,7 +130,7 @@ func (d *dnsReverse) query(e *et.Event, ipstr string, ptr *dbt.Entity) []*relRev
 func (d *dnsReverse) store(e *et.Event, ptr *dbt.Entity, rr []dns.RR) []*relRev {
 	var rev []*relRev
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	// additional validation of the PTR record
@@ -173,7 +173,7 @@ func (d *dnsReverse) store(e *et.Event, ptr *dbt.Entity, rr []dns.RR) []*relRev 
 }
 
 func (d *dnsReverse) createPTRAlias(e *et.Event, name string, ip *dbt.Entity) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	ptr, err := e.Session.DB().CreateAsset(ctx, &oamdns.FQDN{Name: name})

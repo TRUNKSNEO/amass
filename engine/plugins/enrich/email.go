@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -84,7 +84,7 @@ func (ee *emailexpand) store(e *et.Event, asset *dbt.Entity) []*support.Finding 
 	}
 	domain := parts[1]
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if cr, err := e.Session.DB().CreateAsset(ctx, &contact.ContactRecord{DiscoveredAt: domain}); err == nil && cr != nil {
@@ -111,7 +111,7 @@ func (ee *emailexpand) store(e *et.Event, asset *dbt.Entity) []*support.Finding 
 }
 
 func (ee *emailexpand) process(e *et.Event, findings []*support.Finding) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	for _, f := range findings {

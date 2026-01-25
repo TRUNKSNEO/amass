@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -78,7 +78,7 @@ func (cr *companyRounds) check(e *et.Event) error {
 func (cr *companyRounds) lookup(e *et.Event, ident *dbt.Entity, since time.Time) []*dbt.Entity {
 	var orgent *dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, since, "id"); err == nil {
@@ -152,8 +152,8 @@ loop:
 			headers := http.Header{"Content-Type": []string{"application/json"}}
 			headers["Authorization"] = []string{"Bearer " + key}
 
-			_ = cr.plugin.rlimit.Wait(context.TODO())
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			_ = cr.plugin.rlimit.Wait(e.Session.Ctx())
+			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 20*time.Second)
 			defer cancel()
 
 			u := fmt.Sprintf("https://data.api.aviato.co/company/%s/funding-rounds?perPage=%d&page=%d", url.QueryEscape(oamid.ID), perPage, page)
@@ -204,7 +204,7 @@ loop:
 func (cr *companyRounds) getAssociatedOrg(e *et.Event, ident *dbt.Entity) *dbt.Entity {
 	var orgent *dbt.Entity
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, time.Time{}, "id"); err == nil {
@@ -229,7 +229,7 @@ func (cr *companyRounds) store(e *et.Event, ident, orgent *dbt.Entity, funds *co
 	}
 	o := orgent.Asset.(*oamorg.Organization)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, round := range funds.FundingRounds {
@@ -295,7 +295,7 @@ func (cr *companyRounds) orgCheckingAccount(e *et.Event, orgent *dbt.Entity) *db
 	var accountent *dbt.Entity
 	o := orgent.Asset.(*oamorg.Organization)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, orgent, time.Time{}, "account"); err == nil {
@@ -346,7 +346,7 @@ func (cr *companyRounds) orgCheckingAccount(e *et.Event, orgent *dbt.Entity) *db
 }
 
 func (cr *companyRounds) createSeedAccount(e *et.Event, round *companyFundingRound) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	name := fmt.Sprintf("%s:%s", round.Name, round.Stage)
@@ -396,7 +396,7 @@ func (cr *companyRounds) createOrgInvestors(e *et.Event, round *companyFundingRo
 		return investors
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, investor := range round.CompanyInvestors {
@@ -476,7 +476,7 @@ func (cr *companyRounds) createPersonInvestors(e *et.Event, round *companyFundin
 		return investors
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, investor := range round.PersonInvestors {
