@@ -19,7 +19,6 @@ import (
 	oam "github.com/owasp-amass/open-asset-model"
 	oamcert "github.com/owasp-amass/open-asset-model/certificate"
 	oamcon "github.com/owasp-amass/open-asset-model/contact"
-	oamdns "github.com/owasp-amass/open-asset-model/dns"
 	oamorg "github.com/owasp-amass/open-asset-model/org"
 	oamreg "github.com/owasp-amass/open-asset-model/registration"
 	"golang.org/x/net/publicsuffix"
@@ -169,15 +168,15 @@ func (s *Scope) assetsRelatedToAssetWithAssoc(assoc *dbt.Entity) []*dbt.Entity {
 			var found bool
 
 			switch v := a.Asset.(type) {
-			case *oamdns.FQDN:
-				ctx, cancel := context.WithTimeout(s.Session.Ctx(), 3*time.Second)
-				defer cancel()
+			/*case *oamdns.FQDN:
+			ctx, cancel := context.WithTimeout(s.Session.Ctx(), 3*time.Second)
+			defer cancel()
 
-				since := s.ttlStartTime(oam.FQDN, oam.FQDN)
-				if ents, err := s.Session.DB().IncomingEdges(ctx, a, since, "node"); err != nil || len(ents) == 0 {
-					found = true
-					results = append(results, a)
-				}
+			since := s.ttlStartTime(oam.FQDN, oam.FQDN)
+			if ents, err := s.Session.DB().IncomingEdges(ctx, a, since, "node"); err != nil || len(ents) == 0 {
+				found = true
+				results = append(results, a)
+			}*/
 			case *oamorg.Organization:
 				found = true
 				if cert, ok := assoc.Asset.(*oamcert.TLSCertificate); !ok || s.orgNameSimilarToCommon(v, cert) {
@@ -259,10 +258,10 @@ func (s *Scope) awayFromAssetsWithAssociation(assoc *dbt.Entity) ([]*dbt.Entity,
 	var outRels, inRels []string
 	var outSince, inSince time.Time
 	switch assoc.Asset.AssetType() {
-	case oam.FQDN:
-		in = true
-		inRels = append(inRels, "node")
-		inSince = s.ttlStartTime(oam.FQDN, oam.FQDN)
+	/*case oam.FQDN:
+	in = true
+	inRels = append(inRels, "node")
+	inSince = s.ttlStartTime(oam.FQDN, oam.FQDN)*/
 	case oam.DomainRecord:
 		out = true
 		outRels = append(outRels, "registrant_contact")
