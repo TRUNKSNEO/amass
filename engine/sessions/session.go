@@ -32,7 +32,7 @@ type Session struct {
 	log      *slog.Logger
 	ps       *pubsub.Logger
 	cfg      *config.Config
-	scope    *scope.Scope
+	scope    et.Scope
 	start    time.Time
 	db       repository.Repository
 	backlog  *sessionBacklog
@@ -58,13 +58,13 @@ func CreateSession(cfg *config.Config) (et.Session, error) {
 	s := &Session{
 		id:     uuid.New(),
 		cfg:    cfg,
-		scope:  scope.CreateFromConfigScope(cfg, startTime),
 		start:  startTime,
 		ranger: NewAmassRanger(),
 		ps:     pubsub.NewLogger(),
 		stats:  new(et.SessionStats),
 		done:   make(chan struct{}),
 	}
+	s.scope = scope.CreateFromConfigScope(s)
 	s.log = slog.New(slog.NewJSONHandler(s.ps, nil)).With("session", s.id)
 
 	err := s.setupDB()
@@ -106,7 +106,7 @@ func (s *Session) Config() *config.Config {
 	return s.cfg
 }
 
-func (s *Session) Scope() *scope.Scope {
+func (s *Session) Scope() et.Scope {
 	return s.scope
 }
 

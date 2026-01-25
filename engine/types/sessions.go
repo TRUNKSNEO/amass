@@ -13,10 +13,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/owasp-amass/amass/v5/config"
 	"github.com/owasp-amass/amass/v5/engine/pubsub"
-	"github.com/owasp-amass/amass/v5/engine/sessions/scope"
 	"github.com/owasp-amass/asset-db/repository"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
+	oamcon "github.com/owasp-amass/open-asset-model/contact"
+	oamdns "github.com/owasp-amass/open-asset-model/dns"
+	oamnet "github.com/owasp-amass/open-asset-model/network"
+	oamorg "github.com/owasp-amass/open-asset-model/org"
 	"github.com/yl2chen/cidranger"
 )
 
@@ -25,7 +28,7 @@ type Session interface {
 	Log() *slog.Logger
 	PubSub() *pubsub.Logger
 	Config() *config.Config
-	Scope() *scope.Scope
+	Scope() Scope
 	StartTime() time.Time
 	DB() repository.Repository
 	Backlog() Backlog
@@ -34,6 +37,55 @@ type Session interface {
 	Stats() *SessionStats
 	Done() bool
 	Kill()
+}
+
+type Association struct {
+	Submission     *dbt.Entity
+	Match          *dbt.Entity
+	Rationale      string
+	Confidence     int
+	ScopeChange    bool
+	ImpactedAssets []*dbt.Entity
+}
+
+type Scope interface {
+	// Methods for modifying and querying the scope
+	Add(a oam.Asset) bool
+	IsAssetInScope(a oam.Asset, conf int) (oam.Asset, int)
+	AddBlacklist(name string)
+	IsBlacklisted(a oam.Asset) bool
+
+	// Methods that support detecting association
+	IsAssociated(req *Association) ([]*Association, error)
+	AssetsWithAssociation(asset *dbt.Entity) []*dbt.Entity
+
+	// Methods for adding and getting FQDNs
+	Domains() []string
+	FQDNs() []*oamdns.FQDN
+	AddDomain(d string) bool
+
+	// Methods for adding and getting IP addresses
+	Addresses() []string
+	AddAddress(addr string) bool
+	IPAddresses() []*oamnet.IPAddress
+
+	// Methods for adding and getting Netblocks
+	CIDRs() []string
+	AddCIDR(cidr string) bool
+	Netblocks() []*oamnet.Netblock
+
+	// Methods for adding and getting autonomous systems
+	ASNs() []int
+	AddASN(asn int) bool
+	AutonomousSystems() []*oamnet.AutonomousSystem
+
+	// Methods for adding and getting Organizations
+	AddOrgByName(o string) bool
+	Organizations() []*oamorg.Organization
+
+	// Methods for adding and getting Locations
+	Locations() []*oamcon.Location
+	AddLocation(loc *oamcon.Location) bool
 }
 
 // Backlog is the durable, per-session work backlog with claim/lease semantics.

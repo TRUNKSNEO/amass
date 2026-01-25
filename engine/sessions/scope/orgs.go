@@ -11,10 +11,10 @@ import (
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
 	oam "github.com/owasp-amass/open-asset-model"
-	"github.com/owasp-amass/open-asset-model/org"
+	oamorg "github.com/owasp-amass/open-asset-model/org"
 )
 
-func (s *Scope) AddOrganization(o *org.Organization) bool {
+func (s *Scope) AddOrganization(o *oamorg.Organization) bool {
 	key := strings.ToLower(o.Name)
 	if s.isBadField(key) {
 		return false
@@ -30,24 +30,24 @@ func (s *Scope) AddOrganization(o *org.Organization) bool {
 	return false
 }
 
-func (s *Scope) AddOrg(o string) bool {
-	return s.AddOrganization(&org.Organization{Name: o})
+func (s *Scope) AddOrgByName(o string) bool {
+	return s.AddOrganization(&oamorg.Organization{Name: o})
 }
 
-func (s *Scope) Organizations() []*org.Organization {
+func (s *Scope) Organizations() []*oamorg.Organization {
 	s.orgLock.Lock()
 	defer s.orgLock.Unlock()
 
-	var results []*org.Organization
+	var results []*oamorg.Organization
 	for _, v := range s.orgs {
-		if o, ok := v.(*org.Organization); ok {
+		if o, ok := v.(*oamorg.Organization); ok {
 			results = append(results, o)
 		}
 	}
 	return results
 }
 
-func (s *Scope) matchesOrg(o *org.Organization, conf int) (oam.Asset, int) {
+func (s *Scope) matchesOrg(o *oamorg.Organization, conf int) (oam.Asset, int) {
 	for _, v := range s.Organizations() {
 		if strings.EqualFold(o.Name, v.Name) {
 			return v, 100

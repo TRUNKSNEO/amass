@@ -8,36 +8,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/netip"
 	"strings"
 	"time"
 
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
 	"github.com/caffix/stringset"
-	"github.com/owasp-amass/asset-db/repository"
+	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
 	oamcert "github.com/owasp-amass/open-asset-model/certificate"
 	"github.com/owasp-amass/open-asset-model/contact"
-	oamdns "github.com/owasp-amass/open-asset-model/dns"
-	oamnet "github.com/owasp-amass/open-asset-model/network"
 	"github.com/owasp-amass/open-asset-model/org"
 	oamreg "github.com/owasp-amass/open-asset-model/registration"
-	oamurl "github.com/owasp-amass/open-asset-model/url"
 	"golang.org/x/net/publicsuffix"
 )
 
-type Association struct {
-	Submission     *dbt.Entity
-	Match          *dbt.Entity
-	Rationale      string
-	Confidence     int
-	ScopeChange    bool
-	ImpactedAssets []*dbt.Entity
-}
-
-func (s *Scope) IsAssociated(c repository.Repository, req *Association) ([]*Association, error) {
+func (s *Scope) IsAssociated(req *et.Association) ([]*et.Association, error) {
 	if req == nil || req.Submission == nil || req.Submission.Asset == nil || req.Confidence < 0 || req.Confidence > 100 {
 		return nil, errors.New("invalid request")
 	}
@@ -47,9 +34,9 @@ func (s *Scope) IsAssociated(c repository.Repository, req *Association) ([]*Asso
 	}
 
 	// related assets that provide association matching value
-	assocs := s.AssetsWithAssociation(c, req.Submission)
+	assocs := s.AssetsWithAssociation(req.Submission)
 	// are any of these assets in the current session scope?
-	results := s.checkRelatedAssetsforAssoc(c, req, assocs)
+	results := s.checkRelatedAssetsforAssoc(req, assocs)
 
 	if req.ScopeChange {
 		// add all assets related to the asset found to be associated
@@ -63,7 +50,7 @@ func (s *Scope) IsAssociated(c repository.Repository, req *Association) ([]*Asso
 			}
 			// review all previously seen assets that provide association for scope changes
 			for size := len(impacted); size > 0; {
-				added := s.reviewAndUpdate(c, req)
+				added := s.reviewAndUpdate(req)
 
 				size = len(added)
 				impacted = append(impacted, added...)
@@ -83,7 +70,7 @@ func (s *Scope) IsAssociated(c repository.Repository, req *Association) ([]*Asso
 	return results, nil
 }
 
-func (s *Scope) addScopeChangesToRationale(result *Association) {
+func (s *Scope) addScopeChangesToRationale(result *et.Association) {
 	var changes []string
 
 	for _, im := range result.ImpactedAssets {
@@ -93,27 +80,34 @@ func (s *Scope) addScopeChangesToRationale(result *Association) {
 	result.Rationale += ". The following assets were added to the session scope: " + strings.Join(changes, ", ")
 }
 
-func (s *Scope) reviewAndUpdate(c repository.Repository, req *Association) []*dbt.Entity {
+func (s *Scope) reviewAndUpdate(req *et.Association) []*dbt.Entity {
 	var assocs []*dbt.Entity
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if drs, err := c.FindEntitiesByType(ctx, oam.DomainRecord, s.startTime, 0); err == nil && len(drs) > 0 {
+	since := s.ttlStartTime(oam.DomainRecord, oam.DomainRecord)
+	if drs, err := s.Session.DB().FindEntitiesByType(ctx, oam.DomainRecord, since, 0); err == nil && len(drs) > 0 {
 		assocs = append(assocs, drs...)
 	}
-	if iprecs, err := c.FindEntitiesByType(ctx, oam.IPNetRecord, s.startTime, 0); err == nil && len(iprecs) > 0 {
+
+	since = s.ttlStartTime(oam.IPNetRecord, oam.IPNetRecord)
+	if iprecs, err := s.Session.DB().FindEntitiesByType(ctx, oam.IPNetRecord, since, 0); err == nil && len(iprecs) > 0 {
 		assocs = append(assocs, iprecs...)
 	}
-	if autnums, err := c.FindEntitiesByType(ctx, oam.AutnumRecord, s.startTime, 0); err == nil && len(autnums) > 0 {
+
+	since = s.ttlStartTime(oam.AutnumRecord, oam.AutnumRecord)
+	if autnums, err := s.Session.DB().FindEntitiesByType(ctx, oam.AutnumRecord, since, 0); err == nil && len(autnums) > 0 {
 		assocs = append(assocs, autnums...)
 	}
-	if certs, err := c.FindEntitiesByType(ctx, oam.TLSCertificate, s.startTime, 0); err == nil && len(certs) > 0 {
+
+	since = s.ttlStartTime(oam.TLSCertificate, oam.TLSCertificate)
+	if certs, err := s.Session.DB().FindEntitiesByType(ctx, oam.TLSCertificate, since, 0); err == nil && len(certs) > 0 {
 		assocs = append(assocs, certs...)
 	}
 
 	var impacted []*dbt.Entity
-	for _, assoc := range s.checkRelatedAssetsforAssoc(c, req, assocs) {
+	for _, assoc := range s.checkRelatedAssetsforAssoc(req, assocs) {
 		for _, a := range append(assoc.ImpactedAssets, assoc.Match) {
 			if s.Add(a.Asset) {
 				impacted = append(impacted, a)
@@ -123,15 +117,15 @@ func (s *Scope) reviewAndUpdate(c repository.Repository, req *Association) []*db
 	return impacted
 }
 
-func (s *Scope) checkRelatedAssetsforAssoc(c repository.Repository, req *Association, assocs []*dbt.Entity) []*Association {
-	var results []*Association
+func (s *Scope) checkRelatedAssetsforAssoc(req *et.Association, assocs []*dbt.Entity) []*et.Association {
+	var results []*et.Association
 
 	for _, assoc := range assocs {
 		var best int
 		var msg string
 
 		var impacted []*dbt.Entity
-		for _, asset := range append(s.assetsRelatedToAssetWithAssoc(c, assoc), assoc) {
+		for _, asset := range append(s.assetsRelatedToAssetWithAssoc(assoc), assoc) {
 			if req.ScopeChange {
 				impacted = append(impacted, asset)
 			}
@@ -149,7 +143,7 @@ func (s *Scope) checkRelatedAssetsforAssoc(c repository.Repository, req *Associa
 		}
 
 		if best > 0 {
-			results = append(results, &Association{
+			results = append(results, &et.Association{
 				Submission:     req.Submission,
 				Match:          assoc,
 				Rationale:      msg,
@@ -161,7 +155,7 @@ func (s *Scope) checkRelatedAssetsforAssoc(c repository.Repository, req *Associa
 	return results
 }
 
-func (s *Scope) assetsRelatedToAssetWithAssoc(c repository.Repository, assoc *dbt.Entity) []*dbt.Entity {
+func (s *Scope) assetsRelatedToAssetWithAssoc(assoc *dbt.Entity) []*dbt.Entity {
 	set := stringset.New(assoc.ID)
 	defer set.Close()
 
@@ -185,7 +179,7 @@ func (s *Scope) assetsRelatedToAssetWithAssoc(c repository.Repository, assoc *db
 			}
 
 			if !found {
-				if f, err := s.awayFromAssetsWithAssociation(c, a); err == nil && len(f) > 0 {
+				if f, err := s.awayFromAssetsWithAssociation(a); err == nil && len(f) > 0 {
 					for _, finding := range f {
 						if !set.Has(finding.ID) {
 							set.Insert(finding.ID)
@@ -199,11 +193,12 @@ func (s *Scope) assetsRelatedToAssetWithAssoc(c repository.Repository, assoc *db
 	return results
 }
 
-func (s *Scope) AssetsWithAssociation(c repository.Repository, asset *dbt.Entity) []*dbt.Entity {
+func (s *Scope) AssetsWithAssociation(asset *dbt.Entity) []*dbt.Entity {
 	set := stringset.New(asset.ID)
 	defer set.Close()
 
 	var results []*dbt.Entity
+	since := s.ttlStartTime(oam.TLSCertificate, oam.Service)
 	for findings := []*dbt.Entity{asset}; len(findings) > 0; {
 		assets := findings
 		findings = []*dbt.Entity{}
@@ -227,13 +222,13 @@ func (s *Scope) AssetsWithAssociation(c repository.Repository, asset *dbt.Entity
 				defer cancel()
 
 				// only certificates directly used by the services are considered
-				if _, err := c.IncomingEdges(ctx, a, s.startTime, "certificate"); err == nil {
+				if _, err := s.Session.DB().IncomingEdges(ctx, a, since, "certificate"); err == nil {
 					results = append(results, a)
 				}
 			}
 
 			if !found {
-				if f, err := s.towardsAssetsWithAssociation(c, a); err == nil && len(f) > 0 {
+				if f, err := s.towardsAssetsWithAssociation(a); err == nil && len(f) > 0 {
 					for _, finding := range f {
 						if !set.Has(finding.ID) {
 							set.Insert(finding.ID)
@@ -247,53 +242,68 @@ func (s *Scope) AssetsWithAssociation(c repository.Repository, asset *dbt.Entity
 	return results
 }
 
-func (s *Scope) awayFromAssetsWithAssociation(c repository.Repository, assoc *dbt.Entity) ([]*dbt.Entity, error) {
+func (s *Scope) awayFromAssetsWithAssociation(assoc *dbt.Entity) ([]*dbt.Entity, error) {
 	var results []*dbt.Entity
 	// Determine relationship directions to follow on the graph
 	var out, in bool
 	var outRels, inRels []string
+	var outSince, inSince time.Time
 	switch assoc.Asset.AssetType() {
 	case oam.FQDN:
-		out = true
-		outRels = append(outRels, "port")
+		in = true
+		inRels = append(inRels, "node")
+		inSince = s.ttlStartTime(oam.FQDN, oam.FQDN)
 	case oam.IPAddress:
 		out = true
-		outRels = append(outRels, "port")
-		in = true
-		inRels = append(inRels, "dns_record")
+		outRels = append(outRels, "ptr_record")
+		outSince = s.ttlStartTime(oam.IPAddress, oam.FQDN)
 	case oam.Netblock:
 		out = true
 		outRels = append(outRels, "contains")
+		outSince = s.ttlStartTime(oam.Netblock, oam.IPAddress)
 	case oam.AutonomousSystem:
 		out = true
 		outRels = append(outRels, "announces")
+		outSince = s.ttlStartTime(oam.AutonomousSystem, oam.Netblock)
 	case oam.DomainRecord:
 		out = true
 		outRels = append(outRels, "registrant_contact")
+		outSince = s.ttlStartTime(oam.DomainRecord, oam.ContactRecord)
 	case oam.IPNetRecord:
 		out = true
 		outRels = append(outRels, "registrant")
+		outSince = s.ttlStartTime(oam.IPNetRecord, oam.ContactRecord)
 		in = true
 		inRels = append(inRels, "registration")
+		inSince = s.ttlStartTime(oam.IPNetRecord, oam.Netblock)
 	case oam.AutnumRecord:
 		out = true
 		outRels = append(outRels, "registrant")
+		outSince = s.ttlStartTime(oam.AutnumRecord, oam.ContactRecord)
 		in = true
 		inRels = append(inRels, "registration")
+		inSince = s.ttlStartTime(oam.AutnumRecord, oam.AutonomousSystem)
 	case oam.TLSCertificate:
 		out = true
 		outRels = append(outRels, "subject_contact")
+		outSince = s.ttlStartTime(oam.TLSCertificate, oam.ContactRecord)
 	case oam.ContactRecord:
 		out = true
 		outRels = append(outRels, "organization", "location")
+		since1 := s.ttlStartTime(oam.ContactRecord, oam.Organization)
+		outSince = s.ttlStartTime(oam.ContactRecord, oam.Location)
+		if !since1.IsZero() && since1.Before(outSince) {
+			outSince = since1
+		}
+
 	}
 	if out {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if edges, err := c.OutgoingEdges(ctx, assoc, s.startTime, outRels...); err == nil && len(edges) > 0 {
+		if edges, err := s.Session.DB().OutgoingEdges(ctx, assoc, outSince, outRels...); err == nil && len(edges) > 0 {
 			for _, edge := range edges {
-				if entity, err := c.FindEntityById(ctx, edge.ToEntity.ID); err == nil && entity != nil {
+				if entity, err := s.Session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && entity != nil {
 					results = append(results, entity)
 				}
 			}
@@ -303,9 +313,9 @@ func (s *Scope) awayFromAssetsWithAssociation(c repository.Repository, assoc *db
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if edges, err := c.IncomingEdges(ctx, assoc, s.startTime, inRels...); err == nil && len(edges) > 0 {
+		if edges, err := s.Session.DB().IncomingEdges(ctx, assoc, inSince, inRels...); err == nil && len(edges) > 0 {
 			for _, edge := range edges {
-				if entity, err := c.FindEntityById(ctx, edge.FromEntity.ID); err == nil && entity != nil {
+				if entity, err := s.Session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && entity != nil {
 					results = append(results, entity)
 				}
 			}
@@ -317,48 +327,75 @@ func (s *Scope) awayFromAssetsWithAssociation(c repository.Repository, assoc *db
 	return results, nil
 }
 
-func (s *Scope) towardsAssetsWithAssociation(c repository.Repository, asset *dbt.Entity) ([]*dbt.Entity, error) {
+func (s *Scope) towardsAssetsWithAssociation(asset *dbt.Entity) ([]*dbt.Entity, error) {
 	var results []*dbt.Entity
 	// Determine relationship directions to follow on the graph
 	var out, in bool
 	var outRels, inRels []string
+	var outSince, inSince time.Time
 	switch asset.Asset.AssetType() {
 	case oam.FQDN:
 		out = true
 		outRels = append(outRels, "registration")
+		outSince = s.ttlStartTime(oam.FQDN, oam.DomainRecord)
 		in = true
-		inRels = append(inRels, "node")
+		inRels = append(inRels, "node", "ptr_record")
+		since1 := s.ttlStartTime(oam.FQDN, oam.FQDN)
+		inSince = s.ttlStartTime(oam.FQDN, oam.IPAddress)
+		if !since1.IsZero() && since1.Before(inSince) {
+			inSince = since1
+		}
 	case oam.IPAddress:
 		in = true
 		inRels = append(inRels, "contains")
+		inSince = s.ttlStartTime(oam.IPAddress, oam.Netblock)
 	case oam.Netblock:
 		out = true
 		outRels = append(outRels, "registration")
+		outSince = s.ttlStartTime(oam.Netblock, oam.IPNetRecord)
 		in = true
 		inRels = append(inRels, "announces")
+		inSince = s.ttlStartTime(oam.Netblock, oam.AutonomousSystem)
 	case oam.AutonomousSystem:
 		out = true
 		outRels = append(outRels, "registration")
+		outSince = s.ttlStartTime(oam.AutonomousSystem, oam.AutnumRecord)
 	case oam.Organization:
 		in = true
 		inRels = append(inRels, "organization")
+		inSince = s.ttlStartTime(oam.Organization, oam.ContactRecord)
 	case oam.Location:
 		in = true
 		inRels = append(inRels, "location")
+		inSince = s.ttlStartTime(oam.Location, oam.ContactRecord)
 	case oam.ContactRecord:
 		in = true
 		inRels = append(inRels, "registrant", "registrant_contact", "subject_contact")
+		since1 := s.ttlStartTime(oam.ContactRecord, oam.DomainRecord)
+		since2 := s.ttlStartTime(oam.ContactRecord, oam.IPNetRecord)
+		since3 := s.ttlStartTime(oam.ContactRecord, oam.AutnumRecord)
+		inSince = s.ttlStartTime(oam.ContactRecord, oam.TLSCertificate)
+		if !since1.IsZero() && since1.Before(inSince) {
+			inSince = since1
+		}
+		if !since2.IsZero() && since2.Before(inSince) {
+			inSince = since2
+		}
+		if !since3.IsZero() && since3.Before(inSince) {
+			inSince = since3
+		}
 	case oam.Service:
-		in = true
-		inRels = append(inRels, "port")
+		out = true
+		outRels = append(outRels, "certificate")
+		outSince = s.ttlStartTime(oam.Service, oam.TLSCertificate)
 	}
 	if out {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if edges, err := c.OutgoingEdges(ctx, asset, s.startTime, outRels...); err == nil && len(edges) > 0 {
+		if edges, err := s.Session.DB().OutgoingEdges(ctx, asset, outSince, outRels...); err == nil && len(edges) > 0 {
 			for _, edge := range edges {
-				if entity, err := c.FindEntityById(ctx, edge.ToEntity.ID); err == nil && entity != nil {
+				if entity, err := s.Session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && entity != nil {
 					results = append(results, entity)
 				}
 			}
@@ -368,9 +405,9 @@ func (s *Scope) towardsAssetsWithAssociation(c repository.Repository, asset *dbt
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if edges, err := c.IncomingEdges(ctx, asset, s.startTime, inRels...); err == nil && len(edges) > 0 {
+		if edges, err := s.Session.DB().IncomingEdges(ctx, asset, inSince, inRels...); err == nil && len(edges) > 0 {
 			for _, edge := range edges {
-				if entity, err := c.FindEntityById(ctx, edge.FromEntity.ID); err == nil && entity != nil {
+				if entity, err := s.Session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && entity != nil {
 					results = append(results, entity)
 				}
 			}
@@ -382,58 +419,13 @@ func (s *Scope) towardsAssetsWithAssociation(c repository.Repository, asset *dbt
 	return results, nil
 }
 
-func (s *Scope) IsAddressInScope(c repository.Repository, ip *oamnet.IPAddress) bool {
-	if _, conf := s.IsAssetInScope(ip, 0); conf > 0 {
-		return true
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	ents, err := c.FindEntitiesByContent(ctx, oam.IPAddress, s.startTime, 1, dbt.ContentFilters{
-		"address": ip.Address.String(),
-	})
-	if err != nil {
-		return false
-	}
-	addr := ents[0]
-
-	rtype := 1
-	if ip.Type == "IPv6" {
-		rtype = 28
-	}
-
-	if edges, err := c.IncomingEdges(ctx, addr, s.startTime, "dns_record"); err == nil && len(edges) > 0 {
-		for _, edge := range edges {
-			if rec, ok := edge.Relation.(*oamdns.BasicDNSRelation); ok && rec.Header.RRType == rtype {
-				from, err := c.FindEntityById(ctx, edge.FromEntity.ID)
-				if err != nil {
-					continue
-				}
-				if _, conf := s.IsAssetInScope(from.Asset, 0); conf > 0 {
-					return true
-				}
-			}
+func (s *Scope) ttlStartTime(from, to oam.AssetType) time.Time {
+	if matches, err := s.Session.Config().CheckTransformations(string(from), string(to)); err == nil && matches != nil {
+		if ttl := matches.TTL(string(to)); ttl >= 0 {
+			return time.Now().Add(time.Duration(-ttl) * time.Minute)
 		}
 	}
-	return false
-}
-
-func (s *Scope) IsURLInScope(c repository.Repository, u *oamurl.URL) bool {
-	if ip, err := netip.ParseAddr(u.Host); err == nil {
-		ntype := "IPv4"
-		if ip.Is6() {
-			ntype = "IPv6"
-		}
-
-		return s.IsAddressInScope(c, &oamnet.IPAddress{
-			Address: ip,
-			Type:    ntype,
-		})
-	}
-
-	_, conf := s.IsAssetInScope(u, 0)
-	return conf > 0
+	return time.Time{}
 }
 
 func (s *Scope) orgNameSimilarToCommon(o *org.Organization, cert *oamcert.TLSCertificate) bool {

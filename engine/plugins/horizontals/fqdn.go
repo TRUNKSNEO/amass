@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/owasp-amass/amass/v5/engine/plugins/support"
-	"github.com/owasp-amass/amass/v5/engine/sessions/scope"
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
@@ -83,8 +82,8 @@ func (h *horfqdn) check(e *et.Event) error {
 	return nil
 }
 
-func (h *horfqdn) lookup(e *et.Event, asset *dbt.Entity, conf int) []*scope.Association {
-	assocs, err := e.Session.Scope().IsAssociated(e.Session.DB(), &scope.Association{
+func (h *horfqdn) lookup(e *et.Event, asset *dbt.Entity, conf int) []*et.Association {
+	assocs, err := e.Session.Scope().IsAssociated(&et.Association{
 		Submission:  asset,
 		Confidence:  conf,
 		ScopeChange: true,

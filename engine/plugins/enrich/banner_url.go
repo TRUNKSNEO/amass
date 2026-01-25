@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -136,8 +136,10 @@ func (bu *bannerURLs) store(e *et.Event, urls []*oamurl.URL) []*dbt.Entity {
 
 func (bu *bannerURLs) process(e *et.Event, assets []*dbt.Entity) {
 	for _, a := range assets {
-		if u, ok := a.Asset.(*oamurl.URL); ok && e.Session.Scope().IsURLInScope(e.Session.DB(), u) {
-			bu.processOneURL(e, u.Raw, a)
+		if u, ok := a.Asset.(*oamurl.URL); ok {
+			if _, conf := e.Session.Scope().IsAssetInScope(u, 0); conf > 0 {
+				bu.processOneURL(e, u.Raw, a)
+			}
 		}
 	}
 }

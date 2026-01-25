@@ -5,11 +5,8 @@
 package enum
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"log/slog"
-	"strings"
 
 	"github.com/caffix/stringset"
 	"github.com/owasp-amass/amass/v5/config"
@@ -39,7 +36,7 @@ func processInputFiles(args *Args) error {
 			}
 		} else {
 			if f, err := resources.GetResourceFile("namelist.txt"); err == nil {
-				if list, err := getWordList(f); err == nil {
+				if list, err := config.GetWordList(f); err == nil {
 					args.BruteWordList.InsertMany(list...)
 				}
 			}
@@ -52,7 +49,7 @@ func processInputFiles(args *Args) error {
 			}
 		} else {
 			if f, err := resources.GetResourceFile("alterations.txt"); err == nil {
-				if list, err := getWordList(f); err == nil {
+				if list, err := config.GetWordList(f); err == nil {
 					args.AltWordList.InsertMany(list...)
 				}
 			}
@@ -79,18 +76,4 @@ func selectLogger(dir, logfile string) (*slog.Logger, error) {
 		return l, nil
 	}
 	return tools.NewFileLogger(dir, logfile)
-}
-
-func getWordList(reader io.Reader) ([]string, error) {
-	var words []string
-
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		// Get the next word in the list
-		w := strings.TrimSpace(scanner.Text())
-		if err := scanner.Err(); err == nil && w != "" {
-			words = append(words, w)
-		}
-	}
-	return stringset.Deduplicate(words), nil
 }

@@ -40,7 +40,7 @@ func (s *Scope) Add(a oam.Asset) bool {
 	case *oamreg.IPNetRecord:
 		newentry = s.AddCIDR(v.CIDR.String())
 	case *oamreg.AutnumRecord:
-		n1 := s.AddOrg(v.Name)
+		n1 := s.AddOrgByName(v.Name)
 		n2 := s.AddASN(v.Number)
 		newentry = n1 || n2
 	case *oamcert.TLSCertificate:

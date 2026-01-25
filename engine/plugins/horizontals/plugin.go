@@ -12,7 +12,6 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/owasp-amass/amass/v5/engine/plugins/support"
-	"github.com/owasp-amass/amass/v5/engine/sessions/scope"
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
@@ -110,7 +109,7 @@ func (h *horizPlugin) Stop() {
 	h.log.Info("Plugin stopped")
 }
 
-func (h *horizPlugin) addAssociatedRelationship(e *et.Event, since time.Time, assocs []*scope.Association) {
+func (h *horizPlugin) addAssociatedRelationship(e *et.Event, since time.Time, assocs []*et.Association) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -127,7 +126,7 @@ func (h *horizPlugin) addAssociatedRelationship(e *et.Event, since time.Time, as
 			if match, result := e.Session.Scope().IsAssetInScope(impacted.Asset, conf); result >= conf && match != nil {
 				if ents, err := e.Session.DB().FindEntitiesByContent(ctx,
 					match.AssetType(), since, 1, assetToContentFilters(match)); err == nil {
-					for _, assoc2 := range e.Session.Scope().AssetsWithAssociation(e.Session.DB(), ents[0]) {
+					for _, assoc2 := range e.Session.Scope().AssetsWithAssociation(ents[0]) {
 						h.makeAssocRelationshipEntries(e, assoc.Match, assoc2)
 					}
 				}

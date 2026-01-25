@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/owasp-amass/amass/v5/engine/plugins/support"
-	"github.com/owasp-amass/amass/v5/engine/sessions/scope"
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
@@ -67,13 +66,13 @@ func (h *horContact) check(e *et.Event) error {
 	return nil
 }
 
-func (h *horContact) lookup(e *et.Event, entity *dbt.Entity, since time.Time, conf int) []*scope.Association {
+func (h *horContact) lookup(e *et.Event, entity *dbt.Entity, since time.Time, conf int) []*et.Association {
 	labels := []string{"organization", "location", "id"}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var results []*scope.Association
+	var results []*et.Association
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, entity, since, labels...); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
 			to, err := e.Session.DB().FindEntityById(ctx, edge.ToEntity.ID)
@@ -81,7 +80,7 @@ func (h *horContact) lookup(e *et.Event, entity *dbt.Entity, since time.Time, co
 				continue
 			}
 			// check if these asset discoveries could change the scope
-			if assocs, err := e.Session.Scope().IsAssociated(e.Session.DB(), &scope.Association{
+			if assocs, err := e.Session.Scope().IsAssociated(&et.Association{
 				Submission:  to,
 				Confidence:  conf,
 				ScopeChange: true,

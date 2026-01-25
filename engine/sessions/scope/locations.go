@@ -12,10 +12,10 @@ import (
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
 	oam "github.com/owasp-amass/open-asset-model"
-	"github.com/owasp-amass/open-asset-model/contact"
+	oamcon "github.com/owasp-amass/open-asset-model/contact"
 )
 
-func (s *Scope) AddLocation(loc *contact.Location) bool {
+func (s *Scope) AddLocation(loc *oamcon.Location) bool {
 	key := strings.ToLower(loc.Address)
 	if s.isBadField(key) {
 		return false
@@ -31,20 +31,20 @@ func (s *Scope) AddLocation(loc *contact.Location) bool {
 	return false
 }
 
-func (s *Scope) Locations() []*contact.Location {
+func (s *Scope) Locations() []*oamcon.Location {
 	s.locLock.Lock()
 	defer s.locLock.Unlock()
 
-	var results []*contact.Location
+	var results []*oamcon.Location
 	for _, v := range s.locations {
-		if loc, ok := v.(*contact.Location); ok {
+		if loc, ok := v.(*oamcon.Location); ok {
 			results = append(results, loc)
 		}
 	}
 	return results
 }
 
-func (s *Scope) matchesLocation(loc *contact.Location, conf int) (oam.Asset, int) {
+func (s *Scope) matchesLocation(loc *oamcon.Location, conf int) (oam.Asset, int) {
 	if loc.BuildingNumber == "" {
 		return nil, 0
 	}
