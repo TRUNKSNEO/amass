@@ -67,8 +67,6 @@ func (r *ipaddrEndpoint) check(e *et.Event) error {
 	if len(findings) > 0 {
 		r.process(e, findings)
 	}
-
-	support.IPAddressSweep(e, ip, src, 25, sweepCallback)
 	return nil
 }
 
@@ -124,29 +122,4 @@ func (r *ipaddrEndpoint) query(e *et.Event, ipaddr *dbt.Entity) []*support.Findi
 
 func (r *ipaddrEndpoint) process(e *et.Event, findings []*support.Finding) {
 	support.ProcessAssetsWithSource(e, findings, r.plugin.source, r.plugin.name, r.name)
-}
-
-func sweepCallback(e *et.Event, ip *network.IPAddress, src *et.Source) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// ensure we do not work on an IP address that was processed previously
-	_, err := e.Session.DB().FindEntitiesByContent(ctx, oam.IPAddress, e.Session.StartTime(), 1, dbt.ContentFilters{
-		"address": ip.Address.String(),
-	})
-	if err == nil {
-		return
-	}
-
-	if entity, err := e.Session.DB().CreateAsset(ctx, ip); err == nil && entity != nil {
-		_, _ = e.Session.DB().CreateEntityProperty(ctx, entity, &general.SourceProperty{
-			Source:     src.Name,
-			Confidence: src.Confidence,
-		})
-		_ = e.Dispatcher.DispatchEvent(&et.Event{
-			Name:    ip.Address.String(),
-			Entity:  entity,
-			Session: e.Session,
-		})
-	}
 }

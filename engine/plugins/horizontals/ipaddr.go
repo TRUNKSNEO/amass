@@ -31,43 +31,65 @@ func (h *horaddr) check(e *et.Event) error {
 		return errors.New("failed to extract the IPAddress asset")
 	}
 
-	since, err := support.TTLStartTime(e.Session.Config(),
-		string(oam.IPAddress), string(oam.IPAddress), h.plugin.name)
-	if err != nil {
-		return nil
+	if h.checkForPTR(e) {
+		h.process(e, ip)
 	}
-
-	h.checkForPTR(e, ip, since)
 	return nil
 }
 
-func (h *horaddr) checkForPTR(e *et.Event, ip *oamnet.IPAddress, since time.Time) {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+func (h *horaddr) checkForPTR(e *et.Event) bool {
+	since, err := support.TTLStartTime(e.Session.Config(),
+		string(oam.IPAddress), string(oam.FQDN), h.plugin.name)
+	if err != nil || since.IsZero() {
+		return false
+	}
+
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ptrs, err := e.Session.DB().OutgoingEdges(ctx, e.Entity, since, "ptr_record")
 	if err != nil || len(ptrs) == 0 {
-		return
+		return false
+	}
+
+	since, err = support.TTLStartTime(e.Session.Config(),
+		string(oam.FQDN), string(oam.FQDN), h.plugin.name)
+	if err != nil || since.IsZero() {
+		return false
 	}
 
 	for _, ptr := range ptrs {
-		to, err := e.Session.DB().FindEntityById(ctx, ptr.ToEntity.ID)
-		if err != nil {
+		edges, err := e.Session.DB().OutgoingEdges(ctx, ptr.ToEntity, since, "dns_record")
+		if err != nil || len(edges) == 0 {
 			continue
 		}
 
-		fqdn, ok := to.Asset.(*oamdns.FQDN)
-		if !ok {
-			continue
-		}
-
-		if _, conf := e.Session.Scope().IsAssetInScope(fqdn, 0); conf > 0 {
-			size := 100
-			if e.Session.Config().Active {
-				size = 250
+		for _, edge := range edges {
+			if rel, ok := edge.Relation.(*oamdns.BasicDNSRelation); !ok || rel.Header.RRType != 12 {
+				continue
 			}
 
-			support.IPAddressSweep(e, ip, h.plugin.source, size, h.plugin.submitIPAddress)
+			to, err := e.Session.DB().FindEntityById(ctx, edge.ToEntity.ID)
+			if err != nil {
+				continue
+			}
+
+			if fqdn, valid := to.Asset.(*oamdns.FQDN); valid {
+				if _, conf := e.Session.Scope().IsAssetInScope(fqdn, 0); conf > 0 {
+					return true
+				}
+			}
 		}
 	}
+
+	return false
+}
+
+func (h *horaddr) process(e *et.Event, ip *oamnet.IPAddress) {
+	size := 100
+	if e.Session.Config().Active {
+		size = 250
+	}
+
+	support.IPAddressSweep(e, ip, h.plugin.source, size, h.plugin.submitIPAddress)
 }
