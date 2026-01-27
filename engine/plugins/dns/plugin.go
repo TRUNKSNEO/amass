@@ -174,7 +174,7 @@ func (d *dnsPlugin) Stop() {
 func (d *dnsPlugin) lookupWithinTTL(session et.Session, name string, atype oam.AssetType, since time.Time, reltype oam.RelationType, rrtypes ...int) []*dbt.Entity {
 	var results []*dbt.Entity
 
-	if len(rrtypes) == 0 || !since.IsZero() {
+	if len(rrtypes) == 0 || since.IsZero() {
 		return results
 	}
 

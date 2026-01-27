@@ -49,7 +49,7 @@ func (d *dnsTXT) check(e *et.Event) error {
 		d.store(e, e.Entity, txtRecords)
 	}
 
-	if len(txtRecords) > 0 {
+	if len(txtRecords) > 0 || len(props) > 0 {
 		d.process(e, e.Entity, txtRecords, props)
 		support.AddDNSRecordType(e, int(dns.TypeTXT))
 	}

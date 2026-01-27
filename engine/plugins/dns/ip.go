@@ -84,12 +84,7 @@ func (d *dnsIP) check(e *et.Event) error {
 func (d *dnsIP) lookup(e *et.Event, fqdn string, since time.Time) []*relIP {
 	var ips []*relIP
 
-	if assets := d.plugin.lookupWithinTTL(e.Session, fqdn, oam.IPAddress, since, oam.BasicDNSRelation, 1); len(assets) > 0 {
-		for _, a := range assets {
-			ips = append(ips, &relIP{rtype: "dns_record", ip: a})
-		}
-	}
-	if assets := d.plugin.lookupWithinTTL(e.Session, fqdn, oam.IPAddress, since, oam.BasicDNSRelation, 28); len(assets) > 0 {
+	if assets := d.plugin.lookupWithinTTL(e.Session, fqdn, oam.IPAddress, since, oam.BasicDNSRelation, 1, 28); len(assets) > 0 {
 		for _, a := range assets {
 			ips = append(ips, &relIP{rtype: "dns_record", ip: a})
 		}
