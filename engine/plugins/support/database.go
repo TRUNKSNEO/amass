@@ -145,16 +145,8 @@ func MarkAssetMonitored(session et.Session, asset *dbt.Entity, src *et.Source) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(session.Ctx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(session.Ctx(), 3*time.Second)
 	defer cancel()
-
-	if tags, err := session.DB().FindEntityTags(ctx, asset, time.Time{}, "last_monitored"); err == nil && len(tags) > 0 {
-		for _, tag := range tags {
-			if tag.Property.Value() == src.Name {
-				_ = session.DB().DeleteEntityTag(ctx, tag.ID)
-			}
-		}
-	}
 
 	_, _ = session.DB().CreateEntityProperty(ctx, asset, general.SimpleProperty{
 		PropertyName:  "last_monitored",
@@ -163,7 +155,7 @@ func MarkAssetMonitored(session et.Session, asset *dbt.Entity, src *et.Source) {
 }
 
 func AssetMonitoredWithinTTL(session et.Session, asset *dbt.Entity, src *et.Source, since time.Time) bool {
-	if asset == nil || src == nil || !since.IsZero() {
+	if asset == nil || src == nil || since.IsZero() {
 		return false
 	}
 
