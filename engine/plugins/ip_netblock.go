@@ -92,7 +92,7 @@ func (d *ipNetblock) lookup(e *et.Event) error {
 	}
 
 	var entry *sessions.CIDRangerEntry
-	for i := 0; i < 120; i++ {
+	for range 120 {
 		entry = support.IPNetblock(e.Session, ip.Address.String())
 		if entry != nil {
 			break

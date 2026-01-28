@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -33,6 +34,7 @@ type Options struct {
 }
 
 type BacklogDB struct {
+	sync.Mutex
 	db *sql.DB
 }
 
@@ -83,6 +85,10 @@ func (b *BacklogDB) Close() error {
 	if b == nil || b.db == nil {
 		return nil
 	}
+
+	b.Lock()
+	defer b.Unlock()
+
 	return b.db.Close()
 }
 

@@ -25,6 +25,9 @@ type Claim struct {
 
 // Has reports whether entity_id exists in the backlog (any state).
 func (b *BacklogDB) Has(ctx context.Context, entityID string) (bool, error) {
+	b.Lock()
+	defer b.Unlock()
+
 	if entityID == "" {
 		return false, nil
 	}
@@ -46,6 +49,9 @@ func (b *BacklogDB) Has(ctx context.Context, entityID string) (bool, error) {
 // Enqueue inserts a new queued item if it does not already exist.
 // If entity_id already exists, it sets the state to queued.
 func (b *BacklogDB) Enqueue(ctx context.Context, atype oam.AssetType, entityID string) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if entityID == "" {
 		return ErrEmptyEntityID
 	}
@@ -65,6 +71,9 @@ func (b *BacklogDB) Enqueue(ctx context.Context, atype oam.AssetType, entityID s
 
 // EnqueueDone inserts an item and marks it done (or updates existing row to done).
 func (b *BacklogDB) EnqueueDone(ctx context.Context, atype oam.AssetType, entityID string) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if entityID == "" {
 		return ErrEmptyEntityID
 	}
@@ -90,6 +99,9 @@ func (b *BacklogDB) EnqueueDone(ctx context.Context, atype oam.AssetType, entity
 // The claim is atomic: it runs in a single transaction with BEGIN IMMEDIATE
 // and updates selected rows to (state=leased, lease_owner=owner, lease_until=now+ttl).
 func (b *BacklogDB) ClaimNext(ctx context.Context, atype oam.AssetType, owner string, n int, ttl time.Duration) ([]Claim, error) {
+	b.Lock()
+	defer b.Unlock()
+
 	if n <= 0 {
 		return nil, nil
 	}
@@ -205,6 +217,9 @@ func (b *BacklogDB) ClaimNext(ctx context.Context, atype oam.AssetType, owner st
 
 // Ack marks a leased item done. If owner is non-empty, it enforces ownership.
 func (b *BacklogDB) Ack(ctx context.Context, entityID string, owner string) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if entityID == "" {
 		return ErrEmptyEntityID
 	}
@@ -247,6 +262,9 @@ func (b *BacklogDB) Ack(ctx context.Context, entityID string, owner string) erro
 // Release returns a leased item back to queued (e.g., when admission fails/backpressure).
 // If owner is non-empty, it enforces ownership.
 func (b *BacklogDB) Release(ctx context.Context, entityID string, owner string) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if entityID == "" {
 		return ErrEmptyEntityID
 	}
@@ -274,6 +292,9 @@ func (b *BacklogDB) Release(ctx context.Context, entityID string, owner string) 
 // RequeueExpired is optional; ClaimNext already treats expired leases as eligible.
 // This can be useful if you want to periodically normalize state.
 func (b *BacklogDB) RequeueExpired(ctx context.Context) error {
+	b.Lock()
+	defer b.Unlock()
+
 	now := nowUnix()
 	_, err := b.db.ExecContext(ctx, `
 		UPDATE backlog_items
@@ -286,6 +307,9 @@ func (b *BacklogDB) RequeueExpired(ctx context.Context) error {
 
 // Delete removes an item regardless of state.
 func (b *BacklogDB) Delete(ctx context.Context, entityID string) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if entityID == "" {
 		return ErrEmptyEntityID
 	}
@@ -296,6 +320,9 @@ func (b *BacklogDB) Delete(ctx context.Context, entityID string) error {
 // Counts returns counts of queued/leased/done for a given asset type.
 // Useful for scaling heuristics.
 func (b *BacklogDB) Counts(ctx context.Context, atype oam.AssetType) (queued, leased, done int64, err error) {
+	b.Lock()
+	defer b.Unlock()
+
 	row := b.db.QueryRowContext(ctx, `
 		SELECT
 		  COALESCE(SUM(CASE WHEN state = ? THEN 1 ELSE 0 END), 0),

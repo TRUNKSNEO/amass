@@ -57,19 +57,25 @@ func (d *dnsReverse) check(e *et.Event) error {
 	}
 	reverse = utils.RemoveLastDot(reverse)
 
-	src := d.plugin.source
-	ptr := d.createPTRAlias(e, reverse, e.Entity)
-	if ptr == nil {
-		return nil
-	}
-
 	since, err := support.TTLStartTime(e.Session.Config(), "IPAddress", "FQDN", d.plugin.name)
 	if err != nil {
 		return err
 	}
 
+	var ptr *dbt.Entity
+	src := d.plugin.source
+	monitored := support.AssetMonitoredWithinTTL(e.Session, e.Entity, src, since)
+	if monitored {
+		ptr = d.lookupPTRAlias(e, reverse, since)
+	} else {
+		ptr = d.createPTRAlias(e, reverse, e.Entity)
+	}
+	if ptr == nil {
+		return nil
+	}
+
 	var rev []*relRev
-	if support.AssetMonitoredWithinTTL(e.Session, e.Entity, src, since) {
+	if monitored {
 		rev = append(rev, d.lookup(e, ptr, since)...)
 	} else {
 		rev = append(rev, d.query(e, addrstr, ptr)...)
@@ -170,6 +176,19 @@ func (d *dnsReverse) store(e *et.Event, ptr *dbt.Entity, rr []dns.RR) []*relRev 
 	}
 
 	return rev
+}
+
+func (d *dnsReverse) lookupPTRAlias(e *et.Event, name string, since time.Time) *dbt.Entity {
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
+	defer cancel()
+
+	if ents, err := e.Session.DB().FindEntitiesByContent(ctx, oam.FQDN, since, 1, dbt.ContentFilters{
+		"name": name,
+	}); err == nil && len(ents) == 1 {
+		return ents[0]
+	}
+
+	return nil
 }
 
 func (d *dnsReverse) createPTRAlias(e *et.Event, name string, ip *dbt.Entity) *dbt.Entity {
