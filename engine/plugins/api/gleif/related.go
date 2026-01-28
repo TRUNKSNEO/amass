@@ -67,6 +67,10 @@ func (ro *relatedOrgs) lookup(e *et.Event, ident *dbt.Entity, since time.Time) [
 		}
 	}
 
+	if o == nil {
+		return nil
+	}
+
 	var p *dbt.Entity
 	if edges, err := e.Session.DB().IncomingEdges(ctx, o, since, "subsidiary"); err == nil {
 		for _, edge := range edges {
@@ -96,7 +100,13 @@ func (ro *relatedOrgs) lookup(e *et.Event, ident *dbt.Entity, since time.Time) [
 		}
 	}
 
-	return append([]*dbt.Entity{o, p}, children...)
+	var results []*dbt.Entity
+	for _, ent := range append([]*dbt.Entity{o, p}, children...) {
+		if ent != nil {
+			results = append(results, ent)
+		}
+	}
+	return results
 }
 
 func (ro *relatedOrgs) query(e *et.Event, ident *dbt.Entity) []*dbt.Entity {
@@ -117,6 +127,7 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *org.LEIReco
 	if orgent == nil {
 		return orgs
 	}
+	orgs = append(orgs, orgent)
 
 	if parent != nil {
 		parentorg := &oamorg.Organization{Name: parent.Attributes.Entity.LegalName.Name}
@@ -148,7 +159,10 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *org.LEIReco
 
 func (ro *relatedOrgs) process(e *et.Event, assets []*dbt.Entity) {
 	for _, orgent := range assets {
-		o := orgent.Asset.(*oamorg.Organization)
+		o, valid := orgent.Asset.(*oamorg.Organization)
+		if !valid {
+			continue
+		}
 
 		_ = e.Dispatcher.DispatchEvent(&et.Event{
 			Name:    fmt.Sprintf("%s:%s", o.Name, o.ID),
