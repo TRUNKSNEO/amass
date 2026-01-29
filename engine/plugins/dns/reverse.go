@@ -119,7 +119,7 @@ func (d *dnsReverse) lookup(e *et.Event, fqdn *dbt.Entity, since time.Time) []*r
 func (d *dnsReverse) query(e *et.Event, ipstr string, ptr *dbt.Entity) []*relRev {
 	var rev []*relRev
 
-	if rr, err := support.PerformQuery(ipstr, dns.TypePTR); err == nil {
+	if rr, err := support.PerformQuery(e.Session.Ctx(), ipstr, dns.TypePTR); err == nil {
 		if records := d.store(e, ptr, rr); len(records) > 0 {
 			rev = append(rev, records...)
 		}

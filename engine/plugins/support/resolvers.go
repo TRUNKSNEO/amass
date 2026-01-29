@@ -93,15 +93,15 @@ var baselineResolvers = []baseline{
 var trusted *pool.Pool
 var detector *wildcards.Detector
 
-func PerformQuery(name string, qtype uint16) ([]dns.RR, error) {
+func PerformQuery(ctx context.Context, name string, qtype uint16) ([]dns.RR, error) {
 	for i := 1; i <= 10; i++ {
 		msg := utils.QueryMsg(name, qtype)
 		if qtype == dns.TypePTR {
 			msg = utils.ReverseMsg(name)
 		}
 
-		if resp, err := dnsQuery(msg, trusted); err == nil && resp != nil {
-			if wildcardDetected(resp, detector) {
+		if resp, err := dnsQuery(ctx, msg, trusted); err == nil && resp != nil {
+			if wildcardDetected(ctx, resp, detector) {
 				return nil, errors.New("wildcard detected")
 			}
 			if len(resp.Answer) > 0 {
@@ -116,17 +116,22 @@ func PerformQuery(name string, qtype uint16) ([]dns.RR, error) {
 	return nil, ErrFailedMaxDNSAttempts
 }
 
-func wildcardDetected(resp *dns.Msg, r *wildcards.Detector) bool {
-	name := strings.ToLower(utils.RemoveLastDot(resp.Question[0].Name))
+func wildcardDetected(ctx context.Context, resp *dns.Msg, r *wildcards.Detector) bool {
+	wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
+	name := strings.ToLower(utils.RemoveLastDot(resp.Question[0].Name))
 	if dom, err := publicsuffix.EffectiveTLDPlusOne(name); err == nil && dom != "" {
-		return r.WildcardDetected(context.TODO(), resp, dom)
+		return r.WildcardDetected(wctx, resp, dom)
 	}
 	return false
 }
 
-func dnsQuery(msg *dns.Msg, r *pool.Pool) (*dns.Msg, error) {
-	if resp, err := r.Exchange(context.TODO(), msg); err != nil {
+func dnsQuery(ctx context.Context, msg *dns.Msg, r *pool.Pool) (*dns.Msg, error) {
+	ectx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if resp, err := r.Exchange(ectx, msg); err != nil {
 		return nil, err
 	} else if resp.Rcode == dns.RcodeNameError {
 		return nil, ErrNameDoesNotExist

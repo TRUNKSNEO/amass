@@ -86,7 +86,7 @@ func (d *dnsTXT) query(e *et.Event, name *dbt.Entity) []dns.RR {
 		return txtRecords
 	}
 
-	if rr, err := support.PerformQuery(fqdn.Name, dns.TypeTXT); err == nil {
+	if rr, err := support.PerformQuery(e.Session.Ctx(), fqdn.Name, dns.TypeTXT); err == nil {
 		txtRecords = append(txtRecords, rr...)
 		support.MarkAssetMonitored(e.Session, name, d.source)
 	} else if err == support.ErrFailedMaxDNSAttempts {

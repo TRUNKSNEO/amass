@@ -192,7 +192,7 @@ func (d *dnsSubs) query(e *et.Event, subdomain string) []*relSubs {
 	var alias []*relSubs
 
 	for i, t := range d.types {
-		if rr, err := support.PerformQuery(subdomain, t.Qtype); err == nil && len(rr) > 0 {
+		if rr, err := support.PerformQuery(e.Session.Ctx(), subdomain, t.Qtype); err == nil && len(rr) > 0 {
 			if records := d.store(e, subdomain, rr); len(records) > 0 {
 				alias = append(alias, records...)
 			}
@@ -221,7 +221,7 @@ func (d *dnsSubs) query(e *et.Event, subdomain string) []*relSubs {
 			n := name + "." + subdomain
 
 			var results []*relSubs
-			if rr, err := support.PerformQuery(n, dns.TypeSRV); err == nil && len(rr) > 0 {
+			if rr, err := support.PerformQuery(e.Session.Ctx(), n, dns.TypeSRV); err == nil && len(rr) > 0 {
 				if records := d.store(e, n, rr); len(records) > 0 {
 					results = append(results, records...)
 				}

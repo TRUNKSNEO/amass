@@ -77,7 +77,7 @@ func (d *dnsCNAME) query(e *et.Event, name *dbt.Entity) []*relAlias {
 	var alias []*relAlias
 
 	fqdn := name.Asset.(*oamdns.FQDN)
-	if rr, err := support.PerformQuery(fqdn.Name, dns.TypeCNAME); err == nil {
+	if rr, err := support.PerformQuery(e.Session.Ctx(), fqdn.Name, dns.TypeCNAME); err == nil {
 		if records := d.store(e, name, rr); len(records) > 0 {
 			alias = append(alias, records...)
 			support.MarkAssetMonitored(e.Session, name, d.source)

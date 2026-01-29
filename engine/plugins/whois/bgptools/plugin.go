@@ -56,7 +56,10 @@ func (bt *bgpTools) Name() string {
 func (bt *bgpTools) Start(r et.Registry) error {
 	bt.log = r.Log().WithGroup("plugin").With("name", bt.name)
 
-	rr, err := support.PerformQuery("bgp.tools", dns.TypeA)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rr, err := support.PerformQuery(ctx, "bgp.tools", dns.TypeA)
 	if err != nil {
 		return fmt.Errorf("failed to obtain the BGPTools IP address: %v", err)
 	} else if len(rr) == 0 {

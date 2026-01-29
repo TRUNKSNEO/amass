@@ -145,7 +145,6 @@ func (r *autsys) checkCIDRanger(e *et.Event, cidr string, ip net.IP) (int, *et.S
 			}
 		}
 	}
-
 	return asn, src
 }
 
