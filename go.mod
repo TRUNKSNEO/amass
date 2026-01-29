@@ -27,7 +27,7 @@ require (
 	github.com/openrdap/rdap v0.9.1
 	github.com/owasp-amass/asset-db v0.23.2-0.20260129020931-4a7b1a6c57e3
 	github.com/owasp-amass/open-asset-model v0.15.0
-	github.com/owasp-amass/resolve v0.9.7-0.20260120073038-bc21c026637d
+	github.com/owasp-amass/resolve v0.9.7-0.20260129060034-9b8098ae789c
 	github.com/samber/slog-common v0.19.0
 	github.com/samber/slog-syslog/v2 v2.5.2
 	github.com/stretchr/testify v1.11.1

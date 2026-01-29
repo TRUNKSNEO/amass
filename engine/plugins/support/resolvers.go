@@ -117,21 +117,16 @@ func PerformQuery(ctx context.Context, name string, qtype uint16) ([]dns.RR, err
 }
 
 func wildcardDetected(ctx context.Context, resp *dns.Msg, r *wildcards.Detector) bool {
-	wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	name := strings.ToLower(utils.RemoveLastDot(resp.Question[0].Name))
+
 	if dom, err := publicsuffix.EffectiveTLDPlusOne(name); err == nil && dom != "" {
-		return r.WildcardDetected(wctx, resp, dom)
+		return r.WildcardDetected(ctx, resp, dom)
 	}
 	return false
 }
 
 func dnsQuery(ctx context.Context, msg *dns.Msg, r *pool.Pool) (*dns.Msg, error) {
-	ectx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if resp, err := r.Exchange(ectx, msg); err != nil {
+	if resp, err := r.Exchange(ctx, msg); err != nil {
 		return nil, err
 	} else if resp.Rcode == dns.RcodeNameError {
 		return nil, ErrNameDoesNotExist
