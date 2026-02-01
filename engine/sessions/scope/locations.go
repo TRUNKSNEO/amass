@@ -17,7 +17,7 @@ import (
 
 func (s *Scope) AddLocation(loc *oamcon.Location) bool {
 	key := strings.ToLower(loc.Address)
-	if s.isBadField(key) {
+	if key == "" {
 		return false
 	}
 

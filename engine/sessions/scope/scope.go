@@ -107,17 +107,6 @@ func (s *Scope) IsAssetInScope(a oam.Asset, conf int) (oam.Asset, int) {
 	return match, accuracy
 }
 
-func (s *Scope) isBadField(field string) bool {
-	badstrs := []string{"registration", "registry", "redact", "private", "privacy", "available", "domain", "proxy", "liability"}
-
-	for _, bad := range badstrs {
-		if strings.Contains(field, bad) {
-			return true
-		}
-	}
-	return false
-}
-
 func getEmailDomain(email *oamgen.Identifier) (string, bool) {
 	if email == nil || email.Type != oamgen.EmailAddress {
 		return "", false

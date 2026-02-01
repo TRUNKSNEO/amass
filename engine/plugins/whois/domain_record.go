@@ -82,7 +82,7 @@ func (r *domrec) lookup(e *et.Event, asset *dbt.Entity, src *et.Source, m *confi
 		case string(oam.FQDN):
 			rtypes = append(rtypes, "name_server", "whois_server")
 		case string(oam.ContactRecord):
-			rtypes = append(rtypes, "registrant_contact", "admin_contact", "technical_contact", "billing_contact")
+			rtypes = append(rtypes, "registrar_contact", "registrant_contact", "admin_contact", "technical_contact", "billing_contact")
 		}
 
 		if edges, err := e.Session.DB().OutgoingEdges(ctx, asset, since, rtypes...); err == nil && len(edges) > 0 {

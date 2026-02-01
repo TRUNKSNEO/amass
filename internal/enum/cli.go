@@ -23,6 +23,7 @@ import (
 	"github.com/owasp-amass/amass/v5/internal/tools"
 	oam "github.com/owasp-amass/open-asset-model"
 	oamdns "github.com/owasp-amass/open-asset-model/dns"
+	oamorg "github.com/owasp-amass/open-asset-model/org"
 )
 
 const (
@@ -470,7 +471,17 @@ func printScope(c *client.Client, token uuid.UUID) {
 
 		fmt.Printf("\n%s:\n\n", atype)
 		for _, a := range assets {
-			fmt.Println(a.Key())
+			name := a.Key()
+
+			if o, valid := a.(*oamorg.Organization); valid {
+				if o.LegalName != "" {
+					name = o.LegalName
+				} else if o.Name != "" {
+					name = o.Name
+				}
+			}
+
+			fmt.Println(name)
 		}
 	}
 }

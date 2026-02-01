@@ -19,16 +19,10 @@ func (s *Scope) AddOrganization(o *oamorg.Organization) bool {
 	var names []string
 
 	for _, n := range []string{o.Name, o.LegalName} {
-		name := strings.ToLower(n)
-
-		if name == "" {
-			continue
-		}
-		if !s.isBadField(name) {
+		if name := strings.ToLower(n); name != "" {
 			names = append(names, name)
 		}
 	}
-
 	if len(names) == 0 {
 		return false
 	}
@@ -73,16 +67,10 @@ func (s *Scope) matchesOrg(o *oamorg.Organization, conf int) (oam.Asset, int) {
 	var names []string
 
 	for _, n := range []string{o.Name, o.LegalName} {
-		name := strings.ToLower(n)
-
-		if name == "" {
-			continue
-		}
-		if !s.isBadField(name) {
+		if name := strings.ToLower(n); name != "" {
 			names = append(names, name)
 		}
 	}
-
 	if len(names) == 0 {
 		return nil, 0
 	}

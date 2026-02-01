@@ -64,7 +64,7 @@ loop:
 	}
 
 	et, p := string(h.EventType), h.Position
-	if _, found := r.handlers[et][p]; found && h.Exclusive {
+	if handlers, found := r.handlers[et][p]; found && len(handlers) > 0 && h.Exclusive {
 		err := fmt.Errorf("handler at position %d already registered for EventType %s", p, et)
 		r.Log().Error(fmt.Sprintf("Failed to register a handler: %v", err),
 			slog.Group("plugin", "name", h.Plugin.Name(), "handler", h.Name))
