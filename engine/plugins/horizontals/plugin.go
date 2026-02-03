@@ -22,14 +22,15 @@ import (
 )
 
 type horizPlugin struct {
-	name       string
-	log        *slog.Logger
-	horfqdn    *horfqdn
-	horaddr    *horaddr
-	horContact *horContact
-	horRegRec  *horRegRec
-	horTlsCert *horTlsCert
-	source     *et.Source
+	name        string
+	log         *slog.Logger
+	horfqdn     *horfqdn
+	horaddr     *horaddr
+	horOrg      *horOrg
+	horLocation *horLocation
+	horRegRec   *horRegRec
+	horTlsCert  *horTlsCert
+	source      *et.Source
 }
 
 func NewHorizontals() et.Plugin {
@@ -83,23 +84,36 @@ func (h *horizPlugin) Start(r et.Registry) error {
 		return err
 	}
 
-	h.horContact = &horContact{
-		name:   h.name + "-ContactRecord-Handler",
+	h.horOrg = &horOrg{
+		name:   h.name + "-Organization-Handler",
 		plugin: h,
 	}
 	if err := r.RegisterHandler(&et.Handler{
 		Plugin:       h,
-		Name:         h.horContact.name,
+		Name:         h.horOrg.name,
 		Position:     10,
 		Exclusive:    true,
 		MaxInstances: support.MaxHandlerInstances,
-		Transforms: []string{
-			string(oam.Organization),
-			string(oam.Location),
-			string(oam.Identifier),
-		},
-		EventType: oam.ContactRecord,
-		Callback:  h.horContact.check,
+		Transforms:   []string{string(oam.Organization)},
+		EventType:    oam.Organization,
+		Callback:     h.horOrg.check,
+	}); err != nil {
+		return err
+	}
+
+	h.horLocation = &horLocation{
+		name:   h.name + "-Location-Handler",
+		plugin: h,
+	}
+	if err := r.RegisterHandler(&et.Handler{
+		Plugin:       h,
+		Name:         h.horLocation.name,
+		Position:     10,
+		Exclusive:    true,
+		MaxInstances: support.MaxHandlerInstances,
+		Transforms:   []string{string(oam.Location)},
+		EventType:    oam.Location,
+		Callback:     h.horLocation.check,
 	}); err != nil {
 		return err
 	}
@@ -381,20 +395,17 @@ func (h *horizPlugin) addASNetblocksToScope(sess et.Session, asn int) {
 		return
 	}
 
-	since, err := support.TTLStartTime(sess.Config(),
-		string(oam.AutonomousSystem), string(oam.Netblock), h.name)
+	since, err := support.TTLStartTime(sess.Config(), string(oam.AutonomousSystem), string(oam.Netblock), h.name)
 	if err != nil {
 		return
 	}
 
 	if edges, err := sess.DB().OutgoingEdges(ctx, as, since, "announces"); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
-			to, err := sess.DB().FindEntityById(ctx, edge.ToEntity.ID)
-			if err != nil {
-				continue
+			if to, err := sess.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil {
+				// add the announced netblock to the scope
+				_ = sess.Scope().Add(to.Asset)
 			}
-			// add the announced netblock to the scope
-			_ = sess.Scope().Add(to.Asset)
 		}
 	}
 }

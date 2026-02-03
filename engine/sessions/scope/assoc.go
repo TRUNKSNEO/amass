@@ -81,7 +81,7 @@ func (s *Scope) checkRelatedAssetsforAssoc(req *et.Association, assocs []*dbt.En
 			atype := asset.Asset.AssetType()
 			rconf := s.confidence(atype, atype)
 
-			if m, conf := s.IsAssetInScope(asset.Asset, rconf); conf > 0 {
+			if m, conf := s.IsAssetInScope(asset.Asset, rconf); conf >= rconf {
 				evidence = append(evidence, asset)
 
 				if conf > best {
