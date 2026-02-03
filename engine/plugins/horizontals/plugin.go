@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/caffix/stringset"
@@ -407,5 +408,51 @@ func (h *horizPlugin) addASNetblocksToScope(sess et.Session, asn int) {
 				_ = sess.Scope().Add(to.Asset)
 			}
 		}
+	}
+}
+
+func (h *horizPlugin) confidence(sess et.Session, atype oam.AssetType) int {
+	tstr := string(atype)
+
+	if matches, err := sess.Config().CheckTransformations(tstr, tstr); err == nil && matches != nil {
+		if conf := matches.Confidence(h.name); conf > 0 {
+			return conf
+		}
+		if conf := matches.Confidence(tstr); conf > 0 {
+			return conf
+		}
+	}
+
+	return -1
+}
+
+func (h *horizPlugin) isEntityInScope(sess et.Session, ent *dbt.Entity) bool {
+	econf := h.confidence(sess, ent.Asset.AssetType())
+	if econf <= 0 {
+		return false
+	}
+
+	if _, conf := sess.Scope().IsAssetInScope(ent.Asset, econf); conf >= econf {
+		return true
+	}
+	return false
+}
+
+func (h *horizPlugin) addToScopeAndEnqueue(sess et.Session, ent *dbt.Entity) {
+	if sess.Scope().Add(ent.Asset) {
+		if econf := h.confidence(sess, ent.Asset.AssetType()); econf > 0 {
+			if a, conf := sess.Scope().IsAssetInScope(ent.Asset, econf); conf >= econf {
+				// TODO: improve this by obtaining the database entity for the returned asset
+				if strings.EqualFold(a.Key(), ent.Asset.Key()) {
+					_ = sess.Backlog().Enqueue(ent)
+				}
+			}
+		}
+	}
+}
+
+func (h *horizPlugin) enqueueIfOutOfScope(sess et.Session, ent *dbt.Entity) {
+	if !h.isEntityInScope(sess, ent) {
+		h.addToScopeAndEnqueue(sess, ent)
 	}
 }

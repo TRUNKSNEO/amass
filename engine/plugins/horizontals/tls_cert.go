@@ -60,49 +60,66 @@ func (h *horTlsCert) process(e *et.Event, c *oamcert.TLSCertificate, orgs []*dbt
 	// check if the TLS certificate subject common name is in scope
 	if _, conf := e.Session.Scope().IsAssetInScope(&oamdns.FQDN{Name: c.SubjectCommonName}, 0); conf > 0 {
 		for _, o := range orgs {
-			_ = e.Session.Scope().Add(o.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
 		return
 	}
 
-	var confidence int
-	otype := string(oam.Organization)
-	if matches, err := e.Session.Config().CheckTransformations(otype, otype); err == nil && matches != nil {
-		if conf := matches.Confidence(otype); conf >= 0 {
-			confidence = conf
-		}
-	}
-
 	var found bool
-	if confidence > 0 {
-		for _, o := range orgs {
-			if _, conf := e.Session.Scope().IsAssetInScope(o.Asset, confidence); conf >= confidence {
-				found = true
-				break
-			}
+	for _, o := range orgs {
+		if h.plugin.isEntityInScope(e.Session, o) {
+			found = true
+			break
 		}
 	}
 
 	if found {
-		// the TLS certificate should be added to the scope and reviewed
-		_ = e.Session.Scope().Add(c)
-		h.enqueueRegisteredFQDN(e.Session, c)
+		// the TLS certificate subject common name and related
+		// organizations should be added to the scope and reviewed
+		if fqdn := h.registeredFQDN(e.Session, c); fqdn != nil {
+			h.plugin.enqueueIfOutOfScope(e.Session, fqdn)
+		}
 
 		for _, o := range orgs {
-			_ = e.Session.Scope().Add(o.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
 	}
 }
 
-func (h *horTlsCert) enqueueRegisteredFQDN(sess et.Session, c *oamcert.TLSCertificate) {
+func (h *horTlsCert) registeredFQDN(sess et.Session, c *oamcert.TLSCertificate) *dbt.Entity {
 	ctx, cancel := context.WithTimeout(sess.Ctx(), 5*time.Second)
 	defer cancel()
 
-	if ents, err := sess.DB().FindEntitiesByContent(ctx, oam.FQDN, time.Time{}, 1, dbt.ContentFilters{
+	ents, err := sess.DB().FindEntitiesByContent(ctx, oam.FQDN, time.Time{}, 1, dbt.ContentFilters{
 		"name": c.SubjectCommonName,
-	}); err == nil && len(ents) == 1 {
-		fqdn := ents[0]
-
-		_ = sess.Backlog().Enqueue(fqdn)
+	})
+	if err != nil || len(ents) != 1 {
+		return nil
 	}
+	domain := ents[0]
+
+	// follow the node relations back to the registered domain name
+	for {
+		if apex := h.getZoneApexFQDN(sess, domain); apex != nil {
+			domain = apex
+		} else {
+			break
+		}
+	}
+
+	return domain
+}
+
+func (h *horTlsCert) getZoneApexFQDN(sess et.Session, fqdn *dbt.Entity) *dbt.Entity {
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 5*time.Second)
+	defer cancel()
+
+	if edges, err := sess.DB().IncomingEdges(ctx, fqdn, time.Time{}, "node"); err == nil && len(edges) > 0 {
+		for _, edge := range edges {
+			if from, err := sess.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil {
+				return from
+			}
+		}
+	}
+	return nil
 }

@@ -37,12 +37,7 @@ func (h *horOrg) check(e *et.Event) error {
 		return nil
 	}
 
-	oconf := h.orgConfidence(e.Session)
-	if oconf <= 0 {
-		return nil
-	}
-
-	if _, conf := e.Session.Scope().IsAssetInScope(e.Entity.Asset, oconf); conf >= oconf {
+	if h.plugin.isEntityInScope(e.Session, e.Entity) {
 		h.processInScope(e)
 	} else {
 		h.processOutOfScope(e)
@@ -70,13 +65,17 @@ func (h *horOrg) processInScope(e *et.Event) {
 		if err != nil {
 			continue
 		}
+		// check this is a contact record
+		if from.Asset.AssetType() != oam.ContactRecord {
+			continue
+		}
 		// add the contact record orgs and locations to the scope
 		if orgs, locs := h.plugin.lookupContactRecordOrgsAndLocations(e.Session, from); len(orgs) > 0 || len(locs) > 0 {
 			for _, o := range orgs {
-				_ = e.Session.Scope().Add(o.Asset)
+				h.plugin.enqueueIfOutOfScope(e.Session, o)
 			}
 			for _, loc := range locs {
-				_ = e.Session.Scope().Add(loc.Asset)
+				h.plugin.enqueueIfOutOfScope(e.Session, loc)
 			}
 		}
 		// if the contact record belongs to a registration record or TLS certificate, add to the scope
@@ -85,14 +84,16 @@ func (h *horOrg) processInScope(e *et.Event) {
 				if from, err := e.Session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil {
 					switch v := from.Asset.(type) {
 					case *oamreg.AutnumRecord:
-						_ = e.Session.Scope().Add(from.Asset)
-						h.plugin.addASNetblocksToScope(e.Session, v.Number)
+						if !h.plugin.isEntityInScope(e.Session, from) {
+							h.plugin.addASNetblocksToScope(e.Session, v.Number)
+							h.plugin.addToScopeAndEnqueue(e.Session, from)
+						}
 					case *oamreg.DomainRecord:
-						_ = e.Session.Scope().Add(from.Asset)
+						h.plugin.enqueueIfOutOfScope(e.Session, from)
 					case *oamreg.IPNetRecord:
-						_ = e.Session.Scope().Add(from.Asset)
+						h.plugin.enqueueIfOutOfScope(e.Session, from)
 					case *oamcert.TLSCertificate:
-						_ = e.Session.Scope().Add(from.Asset)
+						h.plugin.enqueueIfOutOfScope(e.Session, from)
 					}
 				}
 			}
@@ -114,19 +115,4 @@ func (h *horOrg) processOutOfScope(e *et.Event) {
 			e.Session.Log().Info(assoc.Rationale)
 		}
 	}
-}
-
-func (h *horOrg) orgConfidence(sess et.Session) int {
-	ltype := string(oam.Organization)
-
-	if matches, err := sess.Config().CheckTransformations(ltype, ltype); err == nil && matches != nil {
-		if conf := matches.Confidence(h.plugin.name); conf > 0 {
-			return conf
-		}
-		if conf := matches.Confidence(ltype); conf > 0 {
-			return conf
-		}
-	}
-
-	return -1
 }

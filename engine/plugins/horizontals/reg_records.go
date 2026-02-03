@@ -65,45 +65,27 @@ func (h *horRegRec) check(e *et.Event) error {
 
 func (h *horRegRec) processAutnumRecord(e *et.Event, orgs []*dbt.Entity, locs []*dbt.Entity) {
 	// check if the autnum record / registered autonomous system is in scope
-	if _, conf := e.Session.Scope().IsAssetInScope(e.Entity.Asset, 0); conf > 0 {
+	if h.plugin.isEntityInScope(e.Session, e.Entity) {
 		for _, o := range orgs {
-			_ = e.Session.Scope().Add(o.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
 		for _, loc := range locs {
-			_ = e.Session.Scope().Add(loc.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, loc)
 		}
 		return
 	}
 
-	var confidence int
-	otype := string(oam.Organization)
-	if matches, err := e.Session.Config().CheckTransformations(otype, otype); err == nil && matches != nil {
-		if conf := matches.Confidence(otype); conf >= 0 {
-			confidence = conf
-		}
-	}
-
 	var found bool
-	if confidence > 0 {
-		for _, o := range orgs {
-			if _, conf := e.Session.Scope().IsAssetInScope(o.Asset, confidence); conf >= confidence {
-				found = true
-				break
-			}
+	for _, o := range orgs {
+		if h.plugin.isEntityInScope(e.Session, o) {
+			found = true
+			break
 		}
 	}
 
-	confidence = 0
-	ltype := string(oam.Location)
-	if matches, err := e.Session.Config().CheckTransformations(ltype, ltype); err == nil && matches != nil {
-		if conf := matches.Confidence(ltype); conf >= 0 {
-			confidence = conf
-		}
-	}
-
-	if !found && confidence > 0 {
+	if !found {
 		for _, loc := range locs {
-			if _, conf := e.Session.Scope().IsAssetInScope(loc.Asset, confidence); conf >= confidence {
+			if h.plugin.isEntityInScope(e.Session, loc) {
 				found = true
 				break
 			}
@@ -113,26 +95,28 @@ func (h *horRegRec) processAutnumRecord(e *et.Event, orgs []*dbt.Entity, locs []
 	if found {
 		// the autonomous system should be added to the scope
 		if an, valid := e.Entity.Asset.(*oamreg.AutnumRecord); valid {
-			_ = e.Session.Scope().AddASN(an.Number)
-			h.plugin.addASNetblocksToScope(e.Session, an.Number)
+			if !h.plugin.isEntityInScope(e.Session, e.Entity) {
+				h.plugin.addASNetblocksToScope(e.Session, an.Number)
+				h.plugin.addToScopeAndEnqueue(e.Session, e.Entity)
+			}
 		}
 		for _, o := range orgs {
-			_ = e.Session.Scope().Add(o.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
 		for _, loc := range locs {
-			_ = e.Session.Scope().Add(loc.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, loc)
 		}
 	}
 }
 
 func (h *horRegRec) processDomainRecord(e *et.Event, orgs []*dbt.Entity, locs []*dbt.Entity) {
 	// check if the domain record / registered domain name is in scope
-	if _, conf := e.Session.Scope().IsAssetInScope(e.Entity.Asset, 0); conf > 0 {
+	if h.plugin.isEntityInScope(e.Session, e.Entity) {
 		for _, o := range orgs {
-			_ = e.Session.Scope().Add(o.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
 		for _, loc := range locs {
-			_ = e.Session.Scope().Add(loc.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, loc)
 		}
 		return
 	}
@@ -140,19 +124,19 @@ func (h *horRegRec) processDomainRecord(e *et.Event, orgs []*dbt.Entity, locs []
 
 func (h *horRegRec) processIPNetRecord(e *et.Event, orgs []*dbt.Entity, locs []*dbt.Entity) {
 	// check if the ipnet record / registered netblock is in scope
-	if _, conf := e.Session.Scope().IsAssetInScope(e.Entity.Asset, 0); conf > 0 {
+	if h.plugin.isEntityInScope(e.Session, e.Entity) {
 		for _, o := range orgs {
-			_ = e.Session.Scope().Add(o.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
 		for _, loc := range locs {
-			_ = e.Session.Scope().Add(loc.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, loc)
 		}
 		return
 	}
 
 	var found bool
 	for _, o := range orgs {
-		if _, conf := e.Session.Scope().IsAssetInScope(o.Asset, 0); conf > 0 {
+		if h.plugin.isEntityInScope(e.Session, o) {
 			found = true
 			break
 		}
@@ -160,7 +144,7 @@ func (h *horRegRec) processIPNetRecord(e *et.Event, orgs []*dbt.Entity, locs []*
 
 	if !found {
 		for _, loc := range locs {
-			if _, conf := e.Session.Scope().IsAssetInScope(loc.Asset, 0); conf > 0 {
+			if h.plugin.isEntityInScope(e.Session, loc) {
 				found = true
 				break
 			}
@@ -168,15 +152,14 @@ func (h *horRegRec) processIPNetRecord(e *et.Event, orgs []*dbt.Entity, locs []*
 	}
 
 	if found {
-		// the autonomous system should be added to the scope
-		if iprec, valid := e.Entity.Asset.(*oamreg.IPNetRecord); valid {
-			_ = e.Session.Scope().AddCIDR(iprec.CIDR.String())
-		}
+		// the netblock should be added to the scope
+		h.plugin.addToScopeAndEnqueue(e.Session, e.Entity)
+
 		for _, o := range orgs {
-			_ = e.Session.Scope().Add(o.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
 		for _, loc := range locs {
-			_ = e.Session.Scope().Add(loc.Asset)
+			h.plugin.enqueueIfOutOfScope(e.Session, loc)
 		}
 	}
 }
