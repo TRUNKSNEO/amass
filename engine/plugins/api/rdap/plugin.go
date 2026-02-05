@@ -101,6 +101,7 @@ func (rd *rdapPlugin) Start(r et.Registry) error {
 		Plugin:       rd,
 		Name:         rd.autsys.name,
 		Position:     40,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms:   []string{string(oam.AutnumRecord)},
 		EventType:    oam.AutonomousSystem,
@@ -127,6 +128,7 @@ func (rd *rdapPlugin) Start(r et.Registry) error {
 		Plugin:       rd,
 		Name:         rd.autnum.name,
 		Position:     10,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   rd.autnum.transforms,
 		EventType:    oam.AutnumRecord,
@@ -143,6 +145,7 @@ func (rd *rdapPlugin) Start(r et.Registry) error {
 		Plugin:       rd,
 		Name:         rd.netblock.name,
 		Position:     40,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms:   []string{string(oam.IPNetRecord)},
 		EventType:    oam.Netblock,
@@ -169,6 +172,7 @@ func (rd *rdapPlugin) Start(r et.Registry) error {
 		Plugin:       rd,
 		Name:         rd.ipnet.name,
 		Position:     10,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   rd.ipnet.transforms,
 		EventType:    oam.IPNetRecord,
@@ -207,7 +211,7 @@ func (rd *rdapPlugin) storeEntity(e *et.Event, level int, entity *rdap.Entity, a
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Minute)
 	defer cancel()
 
 	cr, err := e.Session.DB().CreateAsset(ctx, &contact.ContactRecord{DiscoveredAt: u.Raw})

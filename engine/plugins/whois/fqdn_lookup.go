@@ -36,7 +36,7 @@ func (r *fqdnLookup) Name() string {
 func (r *fqdnLookup) check(e *et.Event) error {
 	fqdn, ok := e.Entity.Asset.(*oamdns.FQDN)
 	if !ok {
-		return errors.New("failed to extract the FQDN asset")
+		return errors.New("failed to cast the FQDN asset")
 	}
 
 	name := strings.ToLower(fqdn.Name)
@@ -66,7 +66,7 @@ func (r *fqdnLookup) check(e *et.Event) error {
 }
 
 func (r *fqdnLookup) lookup(e *et.Event, name string, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ents, err := e.Session.DB().FindEntitiesByContent(ctx, oam.DomainRecord, since, 1, dbt.ContentFilters{
@@ -92,14 +92,32 @@ func (r *fqdnLookup) lookup(e *et.Event, name string, since time.Time) *dbt.Enti
 func (r *fqdnLookup) query(e *et.Event, name string, fent *dbt.Entity, src *et.Source) (*dbt.Entity, *whoisparser.WhoisInfo) {
 	_ = r.plugin.rlimit.Wait(e.Session.Ctx())
 
-	resp, err := whoisclient.Whois(name)
-	if err != nil {
-		msg := fmt.Sprintf("failed to acquire the WHOIS record for %s", name)
-		e.Session.Log().Error(msg, slog.Group("plugin", "name", r.plugin.name, "handler", r.name))
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	defer cancel()
+
+	var resp string
+	ch := make(chan string, 1)
+	go r.whoisRoutine(e.Session, name, ch)
+
+	select {
+	case <-ctx.Done():
 		return nil, nil
+	case resp = <-ch:
 	}
 
 	return r.store(e, resp, fent, src)
+}
+
+func (r *fqdnLookup) whoisRoutine(sess et.Session, name string, ch chan string) {
+	resp, err := whoisclient.Whois(name)
+	if err != nil {
+		msg := fmt.Sprintf("failed to acquire the WHOIS record for %s", name)
+		sess.Log().Error(msg, slog.Group("plugin", "name", r.plugin.name, "handler", r.name))
+		ch <- ""
+		return
+	}
+
+	ch <- resp
 }
 
 func (r *fqdnLookup) store(e *et.Event, resp string, fent *dbt.Entity, src *et.Source) (*dbt.Entity, *whoisparser.WhoisInfo) {
@@ -137,7 +155,7 @@ func (r *fqdnLookup) store(e *et.Event, resp string, fent *dbt.Entity, src *et.S
 		dr.ExpirationDate = tstr
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	autasset, err := e.Session.DB().CreateAsset(ctx, dr)

@@ -56,7 +56,7 @@ func (bt *bgpTools) Name() string {
 func (bt *bgpTools) Start(r et.Registry) error {
 	bt.log = r.Log().WithGroup("plugin").With("name", bt.name)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	rr, err := support.PerformQuery(ctx, "bgp.tools", dns.TypeA)
@@ -84,6 +84,7 @@ func (bt *bgpTools) Start(r et.Registry) error {
 		Plugin:       bt,
 		Name:         bt.netblock.name,
 		Position:     2,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms:   []string{string(oam.Netblock)},
 		EventType:    oam.IPAddress,
@@ -100,6 +101,7 @@ func (bt *bgpTools) Start(r et.Registry) error {
 		Plugin:       bt,
 		Name:         bt.autsys.name,
 		Position:     2,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms:   []string{string(oam.AutonomousSystem)},
 		EventType:    oam.Netblock,
@@ -130,7 +132,7 @@ func (bt *bgpTools) whois(ctx context.Context, ipstr string) (*bgpToolsRecord, e
 	addr := net.JoinHostPort(bt.addr, strconv.Itoa(bt.port))
 
 	_ = bt.rlimit.Wait(ctx)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	conn, err := amassnet.DialContext(ctx, "tcp", addr)

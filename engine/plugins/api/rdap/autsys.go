@@ -32,7 +32,7 @@ func (r *autsys) Name() string {
 func (r *autsys) check(e *et.Event) error {
 	as, ok := e.Entity.Asset.(*network.AutonomousSystem)
 	if !ok {
-		return errors.New("failed to extract the AutonomousSystem asset")
+		return errors.New("failed to cast the AutonomousSystem asset")
 	}
 
 	since, err := support.TTLStartTime(e.Session.Config(),
@@ -57,7 +57,7 @@ func (r *autsys) check(e *et.Event) error {
 }
 
 func (r *autsys) lookup(e *et.Event, num int, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ents, err := e.Session.DB().FindEntitiesByContent(ctx, oam.AutnumRecord, since, 1, dbt.ContentFilters{
@@ -83,7 +83,7 @@ func (r *autsys) lookup(e *et.Event, num int, since time.Time) *dbt.Entity {
 func (r *autsys) query(e *et.Event, asset *dbt.Entity) (*dbt.Entity, *rdap.Autnum) {
 	_ = r.plugin.rlimit.Wait(e.Session.Ctx())
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Minute)
 	defer cancel()
 
 	as := asset.Asset.(*network.AutonomousSystem)
@@ -130,7 +130,7 @@ func (r *autsys) store(e *et.Event, resp *rdap.Autnum, asset *dbt.Entity) *dbt.E
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	autasset, err := e.Session.DB().CreateAsset(ctx, autrec)

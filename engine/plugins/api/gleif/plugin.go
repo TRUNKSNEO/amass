@@ -36,11 +36,11 @@ func (g *gleif) Start(r et.Registry) error {
 		name:   g.name + "-Fuzzy-Handler",
 		plugin: g,
 	}
-
 	if err := r.RegisterHandler(&et.Handler{
 		Plugin:       g,
 		Name:         g.fuzzy.name,
 		Position:     48,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms:   []string{string(oam.Identifier)},
 		EventType:    oam.Organization,
@@ -53,11 +53,11 @@ func (g *gleif) Start(r et.Registry) error {
 		name:   g.name + "-LEI-Handler",
 		plugin: g,
 	}
-
 	if err := r.RegisterHandler(&et.Handler{
 		Plugin:       g,
 		Name:         g.related.name,
 		Position:     48,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms:   []string{string(oam.Organization)},
 		EventType:    oam.Identifier,

@@ -36,7 +36,7 @@ func (r *autsys) Name() string {
 func (r *autsys) check(e *et.Event) error {
 	nb, valid := e.Entity.Asset.(*oamnet.Netblock)
 	if !valid {
-		return errors.New("failed to extract the Netblock asset")
+		return errors.New("failed to cast the Netblock asset")
 	}
 
 	ipstr := nb.CIDR.Addr().String()
@@ -91,7 +91,7 @@ func (r *autsys) check(e *et.Event) error {
 }
 
 func (r *autsys) lookup(e *et.Event, nb *dbt.Entity, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Minute)
 	defer cancel()
 
 	edges, err := e.Session.DB().IncomingEdges(ctx, nb, since, "announces")
@@ -149,7 +149,7 @@ func (r *autsys) checkCIDRanger(e *et.Event, cidr string, ip net.IP) (int, *et.S
 }
 
 func (r *autsys) store(e *et.Event, asn int, nb *dbt.Entity, src *et.Source) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	as, err := e.Session.DB().CreateAsset(ctx, &oamnet.AutonomousSystem{Number: asn})

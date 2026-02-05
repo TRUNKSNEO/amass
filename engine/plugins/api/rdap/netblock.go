@@ -34,7 +34,7 @@ func (nb *netblock) Name() string {
 func (nb *netblock) check(e *et.Event) error {
 	n, ok := e.Entity.Asset.(*network.Netblock)
 	if !ok {
-		return errors.New("failed to extract the Netblock asset")
+		return errors.New("failed to cast the Netblock asset")
 	}
 
 	since, err := support.TTLStartTime(e.Session.Config(),
@@ -59,7 +59,7 @@ func (nb *netblock) check(e *et.Event) error {
 }
 
 func (nb *netblock) lookup(e *et.Event, cidr string, since time.Time) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	ents, err := e.Session.DB().FindEntitiesByContent(ctx, oam.IPNetRecord, since, 1, dbt.ContentFilters{
@@ -85,7 +85,7 @@ func (nb *netblock) lookup(e *et.Event, cidr string, since time.Time) *dbt.Entit
 func (nb *netblock) query(e *et.Event, asset *dbt.Entity) (*dbt.Entity, *rdap.IPNetwork) {
 	_ = nb.plugin.rlimit.Wait(e.Session.Ctx())
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Minute)
 	defer cancel()
 
 	n := asset.Asset.(*network.Netblock)
@@ -142,7 +142,7 @@ func (nb *netblock) store(e *et.Event, resp *rdap.IPNetwork, asset *dbt.Entity) 
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	record, err := e.Session.DB().CreateAsset(ctx, ipnetrec)

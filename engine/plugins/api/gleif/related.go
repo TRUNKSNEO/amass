@@ -22,7 +22,7 @@ import (
 func (ro *relatedOrgs) check(e *et.Event) error {
 	ident, ok := e.Entity.Asset.(*general.Identifier)
 	if !ok {
-		return errors.New("failed to extract the Identifier asset")
+		return errors.New("failed to cast the Identifier asset")
 	} else if ident.Type != general.LEICode {
 		return nil
 	}
@@ -50,7 +50,7 @@ func (ro *relatedOrgs) check(e *et.Event) error {
 func (ro *relatedOrgs) lookup(e *et.Event, ident *dbt.Entity, since time.Time) []*dbt.Entity {
 	var o *dbt.Entity
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Minute)
 	defer cancel()
 
 	if edges, err := e.Session.DB().IncomingEdges(ctx, ident, since, "id"); err == nil {
@@ -111,12 +111,8 @@ func (ro *relatedOrgs) lookup(e *et.Event, ident *dbt.Entity, since time.Time) [
 
 func (ro *relatedOrgs) query(e *et.Event, ident *dbt.Entity) []*dbt.Entity {
 	id := ident.Asset.(*general.Identifier)
-
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
-	defer cancel()
-
-	parent, _ := org.GLEIFGetDirectParentRecord(ctx, id.ID)
-	children, _ := org.GLEIFGetDirectChildrenRecords(ctx, id.ID)
+	parent, _ := org.GLEIFGetDirectParentRecord(e.Session.Ctx(), id.ID)
+	children, _ := org.GLEIFGetDirectChildrenRecords(e.Session.Ctx(), id.ID)
 	return ro.store(e, ident, parent, children)
 }
 
@@ -159,15 +155,12 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *org.LEIReco
 
 func (ro *relatedOrgs) process(e *et.Event, assets []*dbt.Entity) {
 	for _, orgent := range assets {
-		o, valid := orgent.Asset.(*oamorg.Organization)
-		if !valid {
-			continue
+		if o, valid := orgent.Asset.(*oamorg.Organization); valid {
+			_ = e.Dispatcher.DispatchEvent(&et.Event{
+				Name:    fmt.Sprintf("%s:%s", o.Name, o.ID),
+				Entity:  orgent,
+				Session: e.Session,
+			})
 		}
-
-		_ = e.Dispatcher.DispatchEvent(&et.Event{
-			Name:    fmt.Sprintf("%s:%s", o.Name, o.ID),
-			Entity:  orgent,
-			Session: e.Session,
-		})
 	}
 }

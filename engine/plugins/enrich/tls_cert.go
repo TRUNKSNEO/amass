@@ -67,6 +67,7 @@ func (te *tlsexpand) Start(r et.Registry) error {
 		Plugin:       te,
 		Name:         te.name,
 		Position:     2,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   te.transforms,
 		EventType:    oam.TLSCertificate,
@@ -140,7 +141,7 @@ func (te *tlsexpand) lookup(e *et.Event, asset *dbt.Entity, m *config.Matches) [
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Minute)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, asset, time.Time{}, rtypes...); err == nil && len(edges) > 0 {
@@ -189,7 +190,7 @@ func (te *tlsexpand) store(e *et.Event, cert *x509.Certificate, asset *dbt.Entit
 	var findings []*support.Finding
 	t := asset.Asset.(*oamcert.TLSCertificate)
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Minute)
 	defer cancel()
 
 	if m.IsMatch(string(oam.FQDN)) {
@@ -344,7 +345,7 @@ func (te *tlsexpand) storeContact(e *et.Event, c *tlsContact, asset *dbt.Entity,
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Minute)
 	defer cancel()
 
 	cr, err := e.Session.DB().CreateAsset(ctx, &contact.ContactRecord{DiscoveredAt: c.DiscoveredAt})

@@ -35,7 +35,7 @@ func (r *ipnet) Name() string {
 func (r *ipnet) check(e *et.Event) error {
 	_, ok := e.Entity.Asset.(*oamreg.IPNetRecord)
 	if !ok {
-		return errors.New("failed to extract the IPNetRecord asset")
+		return errors.New("failed to cast the IPNetRecord asset")
 	}
 
 	matches, err := e.Session.Config().CheckTransformations(
@@ -83,7 +83,7 @@ func (r *ipnet) lookup(e *et.Event, asset *dbt.Entity, m *config.Matches) []*sup
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, asset, time.Time{}, rtypes...); err == nil && len(edges) > 0 {
@@ -130,7 +130,7 @@ func (r *ipnet) lookup(e *et.Event, asset *dbt.Entity, m *config.Matches) []*sup
 }
 
 func (r *ipnet) oneOfSources(e *et.Event, edge *dbt.Edge, src *et.Source, since time.Time) bool {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if tags, err := e.Session.DB().FindEdgeTags(ctx, edge, since, src.Name); err == nil && len(tags) > 0 {

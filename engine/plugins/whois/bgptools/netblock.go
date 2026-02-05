@@ -36,7 +36,7 @@ func (r *netblock) Name() string {
 func (r *netblock) check(e *et.Event) error {
 	ip, ok := e.Entity.Asset.(*oamnet.IPAddress)
 	if !ok {
-		return errors.New("failed to extract the IPAddress asset")
+		return errors.New("failed to cast the IPAddress asset")
 	}
 
 	ipstr := ip.Address.String()
@@ -96,7 +96,7 @@ func (r *netblock) lookup(e *et.Event, ip *dbt.Entity, since time.Time) (*dbt.En
 		return nil, nil
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 2*time.Minute)
 	defer cancel()
 
 	edges, err := e.Session.DB().IncomingEdges(ctx, ip, since, "contains")
@@ -174,14 +174,13 @@ func (r *netblock) store(e *et.Event, cidr netip.Prefix, ip *dbt.Entity, asn int
 		ntype = "IPv6"
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Minute)
 	defer cancel()
 
 	nb, err := e.Session.DB().CreateAsset(ctx, &oamnet.Netblock{
 		CIDR: cidr,
 		Type: ntype,
 	})
-
 	if err != nil || nb == nil {
 		return nil, nil
 	}

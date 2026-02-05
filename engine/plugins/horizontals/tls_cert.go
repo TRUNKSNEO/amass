@@ -84,7 +84,7 @@ func (h *horTlsCert) process(e *et.Event, c *oamcert.TLSCertificate, orgs []*dbt
 }
 
 func (h *horTlsCert) registeredFQDN(sess et.Session, c *oamcert.TLSCertificate) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(sess.Ctx(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 	defer cancel()
 
 	ents, err := sess.DB().FindEntitiesByContent(ctx, oam.FQDN, time.Time{}, 1, dbt.ContentFilters{
@@ -108,7 +108,7 @@ func (h *horTlsCert) registeredFQDN(sess et.Session, c *oamcert.TLSCertificate) 
 }
 
 func (h *horTlsCert) getZoneApexFQDN(sess et.Session, fqdn *dbt.Entity) *dbt.Entity {
-	ctx, cancel := context.WithTimeout(sess.Ctx(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if edges, err := sess.DB().IncomingEdges(ctx, fqdn, time.Time{}, "node"); err == nil && len(edges) > 0 {

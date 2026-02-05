@@ -26,7 +26,8 @@ type Finding struct {
 }
 
 func ProcessAssetsWithSource(e *et.Event, findings []*Finding, src *et.Source, pname, hname string) {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	seconds := 10 * len(findings)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Duration(seconds)*time.Second)
 	defer cancel()
 
 	for _, finding := range findings {
@@ -54,13 +55,17 @@ func ProcessAssetsWithSource(e *et.Event, findings []*Finding, src *et.Source, p
 }
 
 func ProcessFQDNsWithSource(e *et.Event, entities []*dbt.Entity, src *et.Source) {
+	seconds := 10 * len(entities)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Duration(seconds)*time.Second)
+	defer cancel()
+
 	for _, entity := range entities {
 		fqdn, ok := entity.Asset.(*oamdns.FQDN)
 		if !ok || fqdn == nil {
 			continue
 		}
 
-		_, _ = e.Session.DB().CreateEntityProperty(e.Session.Ctx(), entity, &general.SourceProperty{
+		_, _ = e.Session.DB().CreateEntityProperty(ctx, entity, &general.SourceProperty{
 			Source:     src.Name,
 			Confidence: src.Confidence,
 		})
@@ -74,6 +79,10 @@ func ProcessFQDNsWithSource(e *et.Event, entities []*dbt.Entity, src *et.Source)
 }
 
 func ProcessEmailsWithSource(e *et.Event, entities []*dbt.Entity, src *et.Source) {
+	seconds := 10 * len(entities)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Duration(seconds)*time.Second)
+	defer cancel()
+
 	for _, entity := range entities {
 		email, ok := entity.Asset.(*general.Identifier)
 		if !ok || email == nil || email.Type != general.EmailAddress || email.ID == "" {
@@ -92,7 +101,7 @@ func ProcessEmailsWithSource(e *et.Event, entities []*dbt.Entity, src *et.Source
 			}
 		}
 
-		_, _ = e.Session.DB().CreateEntityProperty(e.Session.Ctx(), entity, &general.SourceProperty{
+		_, _ = e.Session.DB().CreateEntityProperty(ctx, entity, &general.SourceProperty{
 			Source:     src.Name,
 			Confidence: src.Confidence,
 		})

@@ -69,12 +69,12 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 				Confidence: src.Confidence,
 			})
 
-			dctx, dcancel := context.WithTimeout(session.Ctx(), 5*time.Minute)
+			dctx, dcancel := context.WithTimeout(session.Ctx(), 30*time.Minute)
 			defer dcancel()
 
 			o.ID = determineOrgID(dctx, name)
 
-			octx, ocancel := context.WithTimeout(session.Ctx(), 10*time.Second)
+			octx, ocancel := context.WithTimeout(session.Ctx(), 20*time.Second)
 			defer ocancel()
 
 			orgent, err = session.DB().CreateAsset(octx, o)

@@ -130,7 +130,7 @@ func (r *domrec) store(e *et.Event, resp *whoisparser.WhoisInfo, asset *dbt.Enti
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
 	defer cancel()
 
 	for _, ns := range resp.Domain.NameServers {
@@ -187,7 +187,7 @@ type domrecContact struct {
 }
 
 func (r *domrec) storeContact(e *et.Event, c *domrecContact, dr *dbt.Entity, m *config.Matches) {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Minute)
 	defer cancel()
 
 	cr, err := e.Session.DB().CreateAsset(ctx, &contact.ContactRecord{DiscoveredAt: c.DiscoveredAt})
@@ -285,7 +285,7 @@ func (r *domrec) process(e *et.Event, findings []*support.Finding, src *et.Sourc
 }
 
 func (r *domrec) createSimpleEdge(sess et.Session, rel oam.Relation, from, to *dbt.Entity) {
-	ctx, cancel := context.WithTimeout(sess.Ctx(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if edge, err := sess.DB().CreateEdge(ctx, &dbt.Edge{

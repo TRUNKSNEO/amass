@@ -75,10 +75,7 @@ func (fc *fuzzyCompletions) query(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
 	if leient := fc.plugin.orgEntityToLEI(e, orgent); leient != nil {
 		lei := leient.Asset.(*general.Identifier)
 
-		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
-		defer cancel()
-
-		if r, err := org.GLEIFGetLEIRecord(ctx, lei.ID); err == nil {
+		if r, err := org.GLEIFGetLEIRecord(e.Session.Ctx(), lei.ID); err == nil {
 			rec = r
 			conf = 100
 		}
@@ -88,10 +85,7 @@ func (fc *fuzzyCompletions) query(e *et.Event, orgent *dbt.Entity) *dbt.Entity {
 		o := orgent.Asset.(*oamorg.Organization)
 		brand := org.ExtractBrandName(o.Name)
 
-		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
-		defer cancel()
-
-		result, err := org.GLEIFSearchFuzzyCompletions(ctx, brand)
+		result, err := org.GLEIFSearchFuzzyCompletions(e.Session.Ctx(), brand)
 		if err != nil {
 			e.Session.Log().Error(err.Error(), slog.Group("plugin", "name", fc.plugin.name, "handler", fc.name))
 			return nil
@@ -136,11 +130,8 @@ func filterFuzzyCompletions(e *et.Event, orgent *dbt.Entity, brand string, m map
 				score += 30
 			}
 
-			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
-			defer cancel()
-
 			lei := m[match]
-			if r, err := org.GLEIFGetLEIRecord(ctx, lei); err == nil {
+			if r, err := org.GLEIFGetLEIRecord(e.Session.Ctx(), lei); err == nil {
 				if org.LocMatch(e, orgent, r) {
 					score += 40
 				}
@@ -171,11 +162,8 @@ func filterFuzzyCompletions(e *et.Event, orgent *dbt.Entity, brand string, m map
 				score += 30
 			}
 
-			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
-			defer cancel()
-
 			lei := m[match]
-			if r, err := org.GLEIFGetLEIRecord(ctx, lei); err == nil {
+			if r, err := org.GLEIFGetLEIRecord(e.Session.Ctx(), lei); err == nil {
 				if org.LocMatch(e, orgent, r) {
 					score += 40
 				}

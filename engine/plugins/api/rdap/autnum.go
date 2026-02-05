@@ -35,7 +35,7 @@ func (r *autnum) Name() string {
 func (r *autnum) check(e *et.Event) error {
 	_, ok := e.Entity.Asset.(*oamreg.AutnumRecord)
 	if !ok {
-		return errors.New("failed to extract the AutnumRecord asset")
+		return errors.New("failed to cast the AutnumRecord asset")
 	}
 
 	matches, err := e.Session.Config().CheckTransformations(
@@ -83,7 +83,7 @@ func (r *autnum) lookup(e *et.Event, asset *dbt.Entity, m *config.Matches) []*su
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), time.Minute)
 	defer cancel()
 
 	if edges, err := e.Session.DB().OutgoingEdges(ctx, asset, time.Time{}, rtypes...); err == nil && len(edges) > 0 {
@@ -130,7 +130,7 @@ func (r *autnum) lookup(e *et.Event, asset *dbt.Entity, m *config.Matches) []*su
 }
 
 func (r *autnum) oneOfSources(e *et.Event, edge *dbt.Edge, src *et.Source, since time.Time) bool {
-	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
 	defer cancel()
 
 	if tags, err := e.Session.DB().FindEdgeTags(ctx, edge, since, src.Name); err == nil && len(tags) > 0 {
