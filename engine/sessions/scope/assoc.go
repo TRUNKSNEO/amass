@@ -331,19 +331,15 @@ func (s *Scope) towardsAssetsWithAssociation(asset *dbt.Entity) ([]*dbt.Entity, 
 		inSince = s.ttlStartTime(oam.Location, oam.ContactRecord)
 	case oam.ContactRecord:
 		in = true
-		inRels = append(inRels, "registrant", "registrant_contact", "subject_contact")
+		inRels = append(inRels, "registrant", "registrant_contact")
 		since1 := s.ttlStartTime(oam.ContactRecord, oam.DomainRecord)
 		since2 := s.ttlStartTime(oam.ContactRecord, oam.IPNetRecord)
-		since3 := s.ttlStartTime(oam.ContactRecord, oam.AutnumRecord)
-		inSince = s.ttlStartTime(oam.ContactRecord, oam.TLSCertificate)
+		inSince = s.ttlStartTime(oam.ContactRecord, oam.AutnumRecord)
 		if !since1.IsZero() && since1.Before(inSince) {
 			inSince = since1
 		}
 		if !since2.IsZero() && since2.Before(inSince) {
 			inSince = since2
-		}
-		if !since3.IsZero() && since3.Before(inSince) {
-			inSince = since3
 		}
 	case oam.Service:
 		out = true

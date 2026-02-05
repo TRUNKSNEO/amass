@@ -76,7 +76,6 @@ func (h *horTlsCert) process(e *et.Event, c *oamcert.TLSCertificate, orgs []*dbt
 		if fqdn := h.registeredFQDN(e.Session, c); fqdn != nil {
 			h.plugin.enqueueIfOutOfScope(e.Session, fqdn)
 		}
-
 		for _, o := range orgs {
 			h.plugin.enqueueIfOutOfScope(e.Session, o)
 		}
