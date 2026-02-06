@@ -239,18 +239,24 @@ func (rd *rdapPlugin) storeEntity(e *et.Event, level int, entity *rdap.Entity, a
 		return
 	}
 
+	var jurisdiction string
 	if adr := v.GetFirst("adr"); adr != nil && m.IsMatch(string(oam.Location)) {
 		if label, ok := adr.Parameters["label"]; ok {
 			s := strings.Join(label, " ")
 
 			addr := strings.Join(strings.Split(s, "\n"), " ")
 			if loc := support.StreetAddressToLocation(addr); loc != nil {
+				jurisdiction = loc.Country
 				if a, err := e.Session.DB().CreateAsset(ctx, loc); err == nil && a != nil {
 					_ = rd.createContactEdge(ctx, e.Session, cr, a, &general.SimpleRelation{Name: "location"}, src)
 				}
 			}
 		}
 	}
+	if jurisdiction == "" {
+		jurisdiction = v.Country()
+	}
+
 	if email := strings.ToLower(v.Email()); m.IsMatch(string(oam.Identifier)) && email != "" {
 		if a, err := e.Session.DB().CreateAsset(ctx, &general.Identifier{
 			UniqueID: fmt.Sprintf("%s:%s", general.EmailAddress, email),
@@ -300,8 +306,15 @@ func (rd *rdapPlugin) storeEntity(e *et.Event, level int, entity *rdap.Entity, a
 			}
 		}
 	} else if m.IsMatch(string(oam.Organization)) && kind == "org" {
-		orgent, err := org.CreateOrgAsset(e.Session, cr,
-			&general.SimpleRelation{Name: "organization"}, &oamorg.Organization{Name: name}, src)
+		orgent, err := org.FindOrgByRDAPHandle(e.Session, entity.Handle, src)
+		if err != nil || orgent == nil {
+			orgent, err = org.CreateOrgAsset(e.Session, cr,
+				&general.SimpleRelation{Name: "organization"},
+				&oamorg.Organization{Name: name, Jurisdiction: jurisdiction}, src)
+			if err == nil {
+				_, _ = org.CreateOrgRDAPHandle(e.Session, orgent, entity.Handle, src)
+			}
+		}
 
 		if err == nil && orgent != nil {
 			o := orgent.Asset.(*oamorg.Organization)

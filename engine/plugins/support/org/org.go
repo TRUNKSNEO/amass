@@ -16,72 +16,62 @@ import (
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
-	"github.com/owasp-amass/open-asset-model/general"
+	oamgen "github.com/owasp-amass/open-asset-model/general"
 	oamorg "github.com/owasp-amass/open-asset-model/org"
 )
 
 var createOrgLock sync.Mutex
 
-func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oamorg.Organization, src *et.Source) (*dbt.Entity, error) {
+func CreateOrgAsset(sess et.Session, obj *dbt.Entity, rel oam.Relation, o *oamorg.Organization, src *et.Source) (*dbt.Entity, error) {
 	createOrgLock.Lock()
 	defer createOrgLock.Unlock()
 
 	if o == nil || o.Name == "" {
 		return nil, errors.New("missing the organization name")
+	} else if o.Jurisdiction == "" {
+		return nil, errors.New("missing the organization jurisdiction")
 	} else if src == nil {
 		return nil, errors.New("missing the source")
 	}
 
 	var orgent *dbt.Entity
 	if obj != nil {
-		orgent = dedupChecks(session, obj, o)
+		orgent = dedupChecks(sess, obj, o)
 	}
 
 	if orgent == nil {
-		name := strings.ToLower(o.Name)
-		id := &general.Identifier{
-			UniqueID: fmt.Sprintf("%s:%s", general.OrganizationName, name),
-			ID:       name,
-			Type:     general.OrganizationName,
+		ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
+		defer cancel()
+
+		var err error
+		dName := o.Name
+		o.Name = genNormName(o)
+		o.ID = genStableOrgID(o)
+		orgent, err = sess.DB().CreateAsset(ctx, o)
+		if err != nil || orgent == nil {
+			return nil, errors.New("failed to create the Organization asset")
 		}
-
-		idctx, idcancel := context.WithTimeout(session.Ctx(), 10*time.Second)
-		defer idcancel()
-
-		if ident, err := session.DB().CreateAsset(idctx, id); err == nil && ident != nil {
-			_, _ = session.DB().CreateEntityProperty(idctx, ident, &general.SourceProperty{
-				Source:     src.Name,
-				Confidence: src.Confidence,
-			})
-
-			o.ID = genStableOrgID()
-			octx, ocancel := context.WithTimeout(session.Ctx(), 20*time.Second)
-			defer ocancel()
-
-			orgent, err = session.DB().CreateAsset(octx, o)
-			if err != nil || orgent == nil {
-				return nil, errors.New("failed to create the OAM Organization asset")
-			}
-
-			_, _ = session.DB().CreateEntityProperty(octx, orgent, &general.SourceProperty{
-				Source:     src.Name,
-				Confidence: src.Confidence,
-			})
-
-			ctx, cancel := context.WithTimeout(session.Ctx(), 10*time.Second)
-			defer cancel()
-
-			if err := createRelation(ctx, session, orgent, &general.SimpleRelation{Name: "id"}, ident, src); err != nil {
-				return nil, err
+		// mark this organization by this caller
+		_, _ = sess.DB().CreateEntityProperty(ctx, orgent, &oamgen.SourceProperty{
+			Source:     src.Name,
+			Confidence: src.Confidence,
+		})
+		// create name claims provided by the caller
+		if ident, err := CreateOrgName(sess, orgent, dName, src); err != nil || ident == nil {
+			return nil, errors.New("failed to create the Identifier asset")
+		}
+		if o.LegalName != "" {
+			if ident, err := CreateOrgLegalName(sess, orgent, o.LegalName, src); err != nil || ident == nil {
+				return nil, errors.New("failed to create the Identifier asset")
 			}
 		}
 	}
 
 	if obj != nil && rel != nil && orgent != nil && obj.ID != orgent.ID {
-		ctx, cancel := context.WithTimeout(session.Ctx(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 		defer cancel()
 
-		if err := createRelation(ctx, session, obj, rel, orgent, src); err != nil {
+		if err := createRelation(ctx, sess, obj, rel, orgent, src); err != nil {
 			return nil, err
 		}
 	}
@@ -89,8 +79,20 @@ func CreateOrgAsset(session et.Session, obj *dbt.Entity, rel oam.Relation, o *oa
 	return orgent, nil
 }
 
-func genStableOrgID() string {
-	return uuid.New().String()
+func genNormName(o *oamorg.Organization) string {
+	name := o.Name
+
+	if o.LegalName != "" {
+		name = o.LegalName
+	}
+
+	return ExtractBrandName(strings.ToLower(name))
+}
+
+func genStableOrgID(o *oamorg.Organization) string {
+	id := uuid.New().String()
+	jurisdiction := o.Jurisdiction
+	return fmt.Sprintf("%s:%s:%s", o.Name, jurisdiction, id)
 }
 
 func createRelation(ctx context.Context, sess et.Session, obj *dbt.Entity, rel oam.Relation, subject *dbt.Entity, src *et.Source) error {
@@ -105,7 +107,7 @@ func createRelation(ctx context.Context, sess et.Session, obj *dbt.Entity, rel o
 		return errors.New("failed to create the edge")
 	}
 
-	_, err = sess.DB().CreateEdgeProperty(ctx, edge, &general.SourceProperty{
+	_, err = sess.DB().CreateEdgeProperty(ctx, edge, &oamgen.SourceProperty{
 		Source:     src.Name,
 		Confidence: src.Confidence,
 	})

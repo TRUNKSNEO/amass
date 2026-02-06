@@ -11,11 +11,11 @@ import (
 
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
-	"github.com/owasp-amass/open-asset-model/contact"
+	oamcon "github.com/owasp-amass/open-asset-model/contact"
 	oamorg "github.com/owasp-amass/open-asset-model/org"
 )
 
-func dedupChecks(session et.Session, obj *dbt.Entity, o *oamorg.Organization) *dbt.Entity {
+func dedupChecks(sess et.Session, obj *dbt.Entity, o *oamorg.Organization) *dbt.Entity {
 	var names []string
 
 	for _, name := range []string{o.Name, o.LegalName} {
@@ -28,30 +28,30 @@ func dedupChecks(session et.Session, obj *dbt.Entity, o *oamorg.Organization) *d
 	}
 
 	switch obj.Asset.(type) {
-	case *contact.ContactRecord:
-		if org, found := nameExistsInContactRecord(session, obj, names); found {
+	case *oamcon.ContactRecord:
+		if org, found := nameExistsInContactRecord(sess, obj, names); found {
 			return org
 		}
-		if org, err := existsAndSharesLocEntity(session, obj, o); err == nil {
+		if org, err := existsAndSharesLocEntity(sess, obj, o); err == nil {
 			return org
 		}
-		if org, err := existsAndSharesAncestorEntity(session, obj, o); err == nil {
+		if org, err := existsAndSharesAncestorEntity(sess, obj, o); err == nil {
 			return org
 		}
-		if org, err := existsAndHasAncestorInSession(session, o); err == nil {
+		if org, err := existsAndHasAncestorInSession(sess, o); err == nil {
 			return org
 		}
 	case *oamorg.Organization:
-		if org, found := nameRelatedToOrganization(session, obj, names); found {
+		if org, found := nameRelatedToOrganization(sess, obj, names); found {
 			return org
 		}
-		if org, err := existsAndSharesLocEntity(session, obj, o); err == nil {
+		if org, err := existsAndSharesLocEntity(sess, obj, o); err == nil {
 			return org
 		}
-		if org, err := existsAndSharesAncestorEntity(session, obj, o); err == nil {
+		if org, err := existsAndSharesAncestorEntity(sess, obj, o); err == nil {
 			return org
 		}
-		if org, err := existsAndHasAncestorInSession(session, o); err == nil {
+		if org, err := existsAndHasAncestorInSession(sess, o); err == nil {
 			return org
 		}
 	}
@@ -59,19 +59,19 @@ func dedupChecks(session et.Session, obj *dbt.Entity, o *oamorg.Organization) *d
 	return nil
 }
 
-func nameExistsInContactRecord(session et.Session, cr *dbt.Entity, names []string) (*dbt.Entity, bool) {
+func nameExistsInContactRecord(sess et.Session, cr *dbt.Entity, names []string) (*dbt.Entity, bool) {
 	if cr == nil {
 		return nil, false
 	}
 
-	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 	defer cancel()
 
-	if edges, err := session.DB().OutgoingEdges(ctx, cr, time.Time{}, "organization"); err == nil && len(edges) > 0 {
+	if edges, err := sess.DB().OutgoingEdges(ctx, cr, time.Time{}, "organization"); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
-			if a, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
+			if a, err := sess.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
 				if _, ok := a.Asset.(*oamorg.Organization); ok {
-					if _, _, found := NameMatch(session, a, names); found {
+					if _, _, found := NameMatch(sess, a, names); found {
 						return a, true
 					}
 				}
@@ -81,30 +81,30 @@ func nameExistsInContactRecord(session et.Session, cr *dbt.Entity, names []strin
 	return nil, false
 }
 
-func nameRelatedToOrganization(session et.Session, orgent *dbt.Entity, names []string) (*dbt.Entity, bool) {
+func nameRelatedToOrganization(sess et.Session, orgent *dbt.Entity, names []string) (*dbt.Entity, bool) {
 	if orgent == nil {
 		return nil, false
 	}
 
-	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 	defer cancel()
 
-	if edges, err := session.DB().IncomingEdges(ctx, orgent, time.Time{}, "subsidiary"); err == nil && len(edges) > 0 {
+	if edges, err := sess.DB().IncomingEdges(ctx, orgent, time.Time{}, "subsidiary"); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
-			if a, err := session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
+			if a, err := sess.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
 				if _, ok := a.Asset.(*oamorg.Organization); ok {
-					if _, _, found := NameMatch(session, a, names); found {
+					if _, _, found := NameMatch(sess, a, names); found {
 						return a, true
 					}
 				}
 			}
 		}
 	}
-	if edges, err := session.DB().OutgoingEdges(ctx, orgent, time.Time{}, "subsidiary"); err == nil && len(edges) > 0 {
+	if edges, err := sess.DB().OutgoingEdges(ctx, orgent, time.Time{}, "subsidiary"); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
-			if a, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
+			if a, err := sess.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
 				if _, ok := a.Asset.(*oamorg.Organization); ok {
-					if _, _, found := NameMatch(session, a, names); found {
+					if _, _, found := NameMatch(sess, a, names); found {
 						return a, true
 					}
 				}
@@ -114,16 +114,16 @@ func nameRelatedToOrganization(session et.Session, orgent *dbt.Entity, names []s
 	return nil, false
 }
 
-func existsAndSharesLocEntity(session et.Session, obj *dbt.Entity, o *oamorg.Organization) (*dbt.Entity, error) {
+func existsAndSharesLocEntity(sess et.Session, obj *dbt.Entity, o *oamorg.Organization) (*dbt.Entity, error) {
 	var locs []*dbt.Entity
 
-	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 	defer cancel()
 
-	if edges, err := session.DB().OutgoingEdges(ctx, obj, time.Time{}, "legal_address", "hq_address", "location"); err == nil {
+	if edges, err := sess.DB().OutgoingEdges(ctx, obj, time.Time{}, "legal_address", "hq_address", "location"); err == nil {
 		for _, edge := range edges {
-			if a, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
-				if _, ok := a.Asset.(*contact.Location); ok {
+			if a, err := sess.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
+				if _, ok := a.Asset.(*oamcon.Location); ok {
 					locs = append(locs, a)
 				}
 			}
@@ -132,10 +132,10 @@ func existsAndSharesLocEntity(session et.Session, obj *dbt.Entity, o *oamorg.Org
 
 	var orgents, crecords []*dbt.Entity
 	for _, loc := range locs {
-		if edges, err := session.DB().IncomingEdges(ctx, loc, time.Time{}, "legal_address", "hq_address", "location"); err == nil {
+		if edges, err := sess.DB().IncomingEdges(ctx, loc, time.Time{}, "legal_address", "hq_address", "location"); err == nil {
 			for _, edge := range edges {
-				if a, err := session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
-					if _, ok := a.Asset.(*contact.ContactRecord); ok && a.ID != obj.ID {
+				if a, err := sess.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
+					if _, ok := a.Asset.(*oamcon.ContactRecord); ok && a.ID != obj.ID {
 						crecords = append(crecords, a)
 					} else if _, ok := a.Asset.(*oamorg.Organization); ok && a.ID != obj.ID {
 						orgents = append(orgents, a)
@@ -146,9 +146,9 @@ func existsAndSharesLocEntity(session et.Session, obj *dbt.Entity, o *oamorg.Org
 	}
 
 	for _, cr := range crecords {
-		if edges, err := session.DB().OutgoingEdges(ctx, cr, time.Time{}, "organization"); err == nil {
+		if edges, err := sess.DB().OutgoingEdges(ctx, cr, time.Time{}, "organization"); err == nil {
 			for _, edge := range edges {
-				if a, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
+				if a, err := sess.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
 					if _, ok := a.Asset.(*oamorg.Organization); ok {
 						orgents = append(orgents, a)
 					}
@@ -158,7 +158,7 @@ func existsAndSharesLocEntity(session et.Session, obj *dbt.Entity, o *oamorg.Org
 	}
 
 	for _, orgent := range orgents {
-		if _, _, found := NameMatch(session, orgent, []string{o.Name, o.LegalName}); found {
+		if _, _, found := NameMatch(sess, orgent, []string{o.Name, o.LegalName}); found {
 			return orgent, nil
 		}
 	}
@@ -166,8 +166,8 @@ func existsAndSharesLocEntity(session et.Session, obj *dbt.Entity, o *oamorg.Org
 	return nil, errors.New("no matching org found")
 }
 
-func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamorg.Organization) (*dbt.Entity, error) {
-	orgents, err := orgsWithSameNames(session, []string{o.Name, o.LegalName})
+func existsAndSharesAncestorEntity(sess et.Session, obj *dbt.Entity, o *oamorg.Organization) (*dbt.Entity, error) {
+	orgents, err := orgsWithSameNames(sess, []string{o.Name, o.LegalName})
 	if err != nil {
 		return nil, err
 	}
@@ -179,13 +179,13 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 		remaining := assets
 		assets = []*dbt.Entity{}
 
-		ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 		defer cancel()
 
 		for _, r := range remaining {
-			if edges, err := session.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
+			if edges, err := sess.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
 				for _, edge := range edges {
-					if a, err := session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
+					if a, err := sess.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
 						if _, found := ancestors[a.ID]; !found {
 							ancestors[a.ID] = struct{}{}
 							assets = append(assets, a)
@@ -205,10 +205,10 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 			assets = []*dbt.Entity{}
 
 			for _, r := range remaining {
-				ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
+				ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 				defer cancel()
 
-				if edges, err := session.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
+				if edges, err := sess.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
 					for _, edge := range edges {
 						id := edge.FromEntity.ID
 						if _, found := visited[id]; found {
@@ -216,7 +216,7 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 						}
 						visited[id] = struct{}{}
 
-						if a, err := session.DB().FindEntityById(ctx, id); err == nil && a != nil {
+						if a, err := sess.DB().FindEntityById(ctx, id); err == nil && a != nil {
 							if _, found := ancestors[a.ID]; !found {
 								assets = append(assets, a)
 							} else {
@@ -232,8 +232,8 @@ func existsAndSharesAncestorEntity(session et.Session, obj *dbt.Entity, o *oamor
 	return nil, errors.New("no matching org found")
 }
 
-func existsAndHasAncestorInSession(session et.Session, o *oamorg.Organization) (*dbt.Entity, error) {
-	orgents, err := orgsWithSameNames(session, []string{o.Name, o.LegalName})
+func existsAndHasAncestorInSession(sess et.Session, o *oamorg.Organization) (*dbt.Entity, error) {
+	orgents, err := orgsWithSameNames(sess, []string{o.Name, o.LegalName})
 	if err != nil {
 		return nil, err
 	}
@@ -247,10 +247,10 @@ func existsAndHasAncestorInSession(session et.Session, o *oamorg.Organization) (
 			assets = []*dbt.Entity{}
 
 			for _, r := range remaining {
-				ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
+				ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 				defer cancel()
 
-				if edges, err := session.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
+				if edges, err := sess.DB().IncomingEdges(ctx, r, time.Time{}); err == nil {
 					for _, edge := range edges {
 						id := edge.FromEntity.ID
 						if _, found := visited[id]; found {
@@ -258,8 +258,8 @@ func existsAndHasAncestorInSession(session et.Session, o *oamorg.Organization) (
 						}
 						visited[id] = struct{}{}
 
-						if a, err := session.DB().FindEntityById(ctx, id); err == nil && a != nil {
-							if session.Backlog().Has(edge.FromEntity) {
+						if a, err := sess.DB().FindEntityById(ctx, id); err == nil && a != nil {
+							if sess.Backlog().Has(edge.FromEntity) {
 								return orgent, nil
 							}
 							assets = append(assets, a)

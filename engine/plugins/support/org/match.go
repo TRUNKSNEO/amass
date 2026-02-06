@@ -80,7 +80,7 @@ func ExtractBrandName(name string) string {
 }
 
 // NameMatch checks if the provided organization entity matches any of the given names.
-func NameMatch(session et.Session, orgent *dbt.Entity, names []string) ([]string, []string, bool) {
+func NameMatch(sess et.Session, orgent *dbt.Entity, names []string) ([]string, []string, bool) {
 	var found bool
 	var exact, partial []string
 
@@ -101,12 +101,12 @@ func NameMatch(session et.Session, orgent *dbt.Entity, names []string) ([]string
 		orgNames = append(orgNames, o.LegalName)
 	}
 
-	ctx, cancel := context.WithTimeout(session.Ctx(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 	defer cancel()
 
-	if edges, err := session.DB().OutgoingEdges(ctx, orgent, time.Time{}, "id"); err == nil && len(edges) > 0 {
+	if edges, err := sess.DB().OutgoingEdges(ctx, orgent, time.Time{}, "id"); err == nil && len(edges) > 0 {
 		for _, edge := range edges {
-			if a, err := session.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
+			if a, err := sess.DB().FindEntityById(ctx, edge.ToEntity.ID); err == nil && a != nil {
 				if id, ok := a.Asset.(*general.Identifier); ok &&
 					(id.Type == general.OrganizationName || id.Type == general.LegalName) {
 					orgNames = append(orgNames, id.ID)
@@ -146,9 +146,9 @@ func NameMatch(session et.Session, orgent *dbt.Entity, names []string) ([]string
 	return exact, partial, found
 }
 
-func orgsWithSameNames(session et.Session, names []string) ([]*dbt.Entity, error) {
+func orgsWithSameNames(sess et.Session, names []string) ([]*dbt.Entity, error) {
 	var idents []*dbt.Entity
-	ctx, cancel := context.WithTimeout(session.Ctx(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 2*time.Minute)
 	defer cancel()
 
 	for _, n := range names {
@@ -158,7 +158,7 @@ func orgsWithSameNames(session et.Session, names []string) ([]*dbt.Entity, error
 		name := strings.ToLower(n)
 
 		// check for known organization name identifiers
-		if assets, err := session.DB().FindEntitiesByContent(ctx, oam.Identifier, time.Time{}, 0, dbt.ContentFilters{
+		if assets, err := sess.DB().FindEntitiesByContent(ctx, oam.Identifier, time.Time{}, 0, dbt.ContentFilters{
 			"unique_id": fmt.Sprintf("%s:%s", general.OrganizationName, name),
 		}); err == nil {
 			for _, a := range assets {
@@ -169,7 +169,7 @@ func orgsWithSameNames(session et.Session, names []string) ([]*dbt.Entity, error
 		}
 
 		// check for known legal name identifiers
-		if assets, err := session.DB().FindEntitiesByContent(ctx, oam.Identifier, time.Time{}, 0, dbt.ContentFilters{
+		if assets, err := sess.DB().FindEntitiesByContent(ctx, oam.Identifier, time.Time{}, 0, dbt.ContentFilters{
 			"unique_id": fmt.Sprintf("%s:%s", general.LegalName, name),
 		}); err == nil {
 			for _, a := range assets {
@@ -182,9 +182,9 @@ func orgsWithSameNames(session et.Session, names []string) ([]*dbt.Entity, error
 
 	var orgents []*dbt.Entity
 	for _, ident := range idents {
-		if edges, err := session.DB().IncomingEdges(ctx, ident, time.Time{}, "id"); err == nil {
+		if edges, err := sess.DB().IncomingEdges(ctx, ident, time.Time{}, "id"); err == nil {
 			for _, edge := range edges {
-				if a, err := session.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
+				if a, err := sess.DB().FindEntityById(ctx, edge.FromEntity.ID); err == nil && a != nil {
 					if _, ok := a.Asset.(*org.Organization); ok {
 						orgents = append(orgents, a)
 					}

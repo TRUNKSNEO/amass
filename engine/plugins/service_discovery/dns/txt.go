@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -17,7 +17,7 @@ import (
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oamdns "github.com/owasp-amass/open-asset-model/dns"
-	"github.com/owasp-amass/open-asset-model/general"
+	oamgen "github.com/owasp-amass/open-asset-model/general"
 	oamorg "github.com/owasp-amass/open-asset-model/org"
 )
 
@@ -63,8 +63,8 @@ func (r *txtHandler) store(e *et.Event, records []string) []*dbt.Entity {
 			}
 
 			o, err := org.CreateOrgAsset(e.Session, e.Entity,
-				&general.SimpleRelation{Name: "verified_for"},
-				&oamorg.Organization{Name: name}, r.plugin.source)
+				&oamgen.SimpleRelation{Name: "verified_for"},
+				&oamorg.Organization{Name: name, Jurisdiction: "Unknown"}, r.plugin.source)
 
 			if err == nil && o != nil {
 				orgs = append(orgs, o)

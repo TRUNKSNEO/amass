@@ -131,7 +131,10 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *LEIRecord, 
 	orgs = append(orgs, orgent)
 
 	if parent != nil {
-		parentorg := &oamorg.Organization{Name: parent.Attributes.Entity.LegalName.Name}
+		parentorg := &oamorg.Organization{
+			Name:         parent.Attributes.Entity.LegalName.Name,
+			Jurisdiction: parent.Attributes.Entity.Jurisdiction,
+		}
 
 		parentent, err := org.CreateOrgAsset(e.Session, orgent, nil, parentorg, ro.plugin.source)
 		if err == nil {
@@ -144,7 +147,10 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *LEIRecord, 
 	}
 
 	for _, child := range children {
-		childorg := &oamorg.Organization{Name: child.Attributes.Entity.LegalName.Name}
+		childorg := &oamorg.Organization{
+			Name:         child.Attributes.Entity.LegalName.Name,
+			Jurisdiction: child.Attributes.Entity.Jurisdiction,
+		}
 
 		childent, err := org.CreateOrgAsset(e.Session, orgent,
 			&general.SimpleRelation{Name: "subsidiary"}, childorg, ro.plugin.source)

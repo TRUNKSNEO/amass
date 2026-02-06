@@ -216,7 +216,10 @@ func (r *domrec) storeContact(e *et.Event, c *domrecContact, dr *dbt.Entity, m *
 			}
 		}
 	}
+
+	var jurisdiction string
 	if loc := support.StreetAddressToLocation(addr); loc != nil {
+		jurisdiction = loc.Country
 		if a, err := e.Session.DB().CreateAsset(ctx, loc); err == nil && a != nil {
 			r.createSimpleEdge(e.Session, &general.SimpleRelation{Name: "location"}, cr, a)
 		}
@@ -266,7 +269,7 @@ func (r *domrec) storeContact(e *et.Event, c *domrecContact, dr *dbt.Entity, m *
 	if m.IsMatch(string(oam.Organization)) {
 		orgent, err := org.CreateOrgAsset(e.Session, cr,
 			&general.SimpleRelation{Name: "organization"},
-			&oamorg.Organization{Name: wc.Organization}, r.plugin.source)
+			&oamorg.Organization{Name: wc.Organization, Jurisdiction: jurisdiction}, r.plugin.source)
 
 		if err == nil && orgent != nil {
 			o := orgent.Asset.(*oamorg.Organization)
