@@ -7,6 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/PuerkitoBio/purell v1.2.1
 	github.com/adrg/strutil v0.3.1
+	github.com/biter777/countries v1.7.5
 	github.com/caffix/fullname_parser v0.0.0-20251125232100-56f069a7ca05
 	github.com/caffix/jarm-go v0.0.0-20240920030848-1c7ab2423494
 	github.com/caffix/pipeline v0.3.0
