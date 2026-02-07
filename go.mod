@@ -25,7 +25,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/nyaruka/phonenumbers v1.6.8
 	github.com/openrdap/rdap v0.9.1
-	github.com/owasp-amass/asset-db v0.23.2-0.20260201185250-b5a456d17117
+	github.com/owasp-amass/asset-db v0.23.2-0.20260207031822-6bbb568a7a2b
 	github.com/owasp-amass/open-asset-model v0.15.0
 	github.com/owasp-amass/resolve v0.9.7-0.20260129060429-238e495debf3
 	github.com/samber/slog-common v0.20.0
@@ -101,7 +101,7 @@ require (
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260203154110-aaaaaa54ba6b // indirect
+	golang.org/x/telemetry v0.0.0-20260205145544-86a5c4bf3c8d // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
