@@ -52,17 +52,17 @@ func CreateOrgAsset(sess et.Session, obj *dbt.Entity, rel oam.Relation, o *oamor
 		}
 	}
 
+	dName := o.Name
+	o.Name = normName
 	if orgent == nil && obj != nil {
 		orgent = dedupChecks(sess, obj, o)
 	}
 
-	dName := o.Name
 	if orgent == nil {
 		ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 		defer cancel()
 
 		var err error
-		o.Name = normName
 		o.ID = genStableOrgID(o)
 		orgent, err = sess.DB().CreateAsset(ctx, o)
 		if err != nil || orgent == nil {
