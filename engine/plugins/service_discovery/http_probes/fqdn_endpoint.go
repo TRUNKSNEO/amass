@@ -38,8 +38,7 @@ func (fe *fqdnEndpoint) check(e *et.Event) error {
 		return nil
 	}
 	if !support.HasDNSRecordType(e, int(dns.TypeA)) &&
-		!support.HasDNSRecordType(e, int(dns.TypeAAAA)) &&
-		!support.HasDNSRecordType(e, int(dns.TypeCNAME)) {
+		!support.HasDNSRecordType(e, int(dns.TypeAAAA)) {
 		return nil
 	}
 	if _, conf := e.Session.Scope().IsAssetInScope(fqdn, 0); conf == 0 {
@@ -56,11 +55,7 @@ func (fe *fqdnEndpoint) check(e *et.Event) error {
 	if support.AssetMonitoredWithinTTL(e.Session, e.Entity, src, since) {
 		findings = append(findings, fe.lookup(e, e.Entity, since)...)
 	} else {
-		go func() {
-			if findings := append(findings, fe.query(e, e.Entity)...); len(findings) > 0 {
-				fe.process(e, findings)
-			}
-		}()
+		findings = append(findings, fe.query(e, e.Entity)...)
 		support.MarkAssetMonitored(e.Session, e.Entity, src)
 	}
 
@@ -100,20 +95,33 @@ func (fe *fqdnEndpoint) lookup(e *et.Event, host *dbt.Entity, since time.Time) [
 
 func (fe *fqdnEndpoint) query(e *et.Event, host *dbt.Entity) []*support.Finding {
 	var findings []*support.Finding
-	fqdn := host.Asset.(*oamdns.FQDN)
 
+	var count int
+	fch := make(chan []*support.Finding, len(e.Session.Config().Scope.Ports))
 	for _, port := range e.Session.Config().Scope.Ports {
-		addr := fqdn.Name + ":" + strconv.Itoa(port)
+		count++
+		go fe.probeOnePort(e, host, port, fch)
+	}
 
-		proto := "https"
-		if port == 80 || port == 8080 {
-			proto = "http"
+	for range count {
+		if results := <-fch; len(results) > 0 {
+			findings = append(findings, results...)
 		}
-
-		findings = append(findings, fe.plugin.query(e, host, proto+"://"+addr, port)...)
 	}
 
 	return findings
+}
+
+func (fe *fqdnEndpoint) probeOnePort(e *et.Event, host *dbt.Entity, port int, ch chan []*support.Finding) {
+	fqdn := host.Asset.(*oamdns.FQDN)
+	addr := fqdn.Name + ":" + strconv.Itoa(port)
+
+	proto := "https"
+	if port == 80 || port == 8080 {
+		proto = "http"
+	}
+
+	ch <- fe.plugin.query(e, host, proto+"://"+addr, port)
 }
 
 func (fe *fqdnEndpoint) process(e *et.Event, findings []*support.Finding) {

@@ -59,6 +59,7 @@ func (hp *httpProbing) Start(r et.Registry) error {
 		Plugin:       hp,
 		Name:         hp.fqdnend.name,
 		Position:     41,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms: []string{
 			string(oam.Service),
@@ -78,6 +79,7 @@ func (hp *httpProbing) Start(r et.Registry) error {
 		Plugin:       hp,
 		Name:         hp.ipaddr.name,
 		Position:     42,
+		Exclusive:    true,
 		MaxInstances: support.MinHandlerInstances,
 		Transforms: []string{
 			string(oam.Service),
@@ -100,7 +102,7 @@ func (hp *httpProbing) Stop() {
 func (hp *httpProbing) query(e *et.Event, entity *dbt.Entity, target string, port int) []*support.Finding {
 	var findings []*support.Finding
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
 	if resp, err := http.RequestWebPage(ctx, &http.Request{URL: target}); err == nil && resp != nil {
@@ -126,7 +128,10 @@ func (hp *httpProbing) store(e *et.Event, resp *http.Response, entity *dbt.Entit
 				break
 			}
 
-			a, err := e.Session.DB().CreateAsset(context.Background(), c)
+			ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+			defer cancel()
+
+			a, err := e.Session.DB().CreateAsset(ctx, c)
 			if err != nil {
 				break
 			}

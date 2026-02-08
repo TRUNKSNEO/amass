@@ -58,11 +58,7 @@ func (r *ipaddrEndpoint) check(e *et.Event) error {
 	if support.AssetMonitoredWithinTTL(e.Session, e.Entity, src, since) {
 		findings = append(findings, r.lookup(e, e.Entity, since)...)
 	} else {
-		go func() {
-			if findings := append(findings, r.query(e, e.Entity)...); len(findings) > 0 {
-				r.process(e, findings)
-			}
-		}()
+		findings = append(findings, r.query(e, e.Entity)...)
 		support.MarkAssetMonitored(e.Session, e.Entity, src)
 	}
 
@@ -102,24 +98,38 @@ func (r *ipaddrEndpoint) lookup(e *et.Event, ip *dbt.Entity, since time.Time) []
 
 func (r *ipaddrEndpoint) query(e *et.Event, ipaddr *dbt.Entity) []*support.Finding {
 	var findings []*support.Finding
-	ip := ipaddr.Asset.(*network.IPAddress)
 
+	var count int
+	fch := make(chan []*support.Finding, len(e.Session.Config().Scope.Ports))
 	for _, port := range e.Session.Config().Scope.Ports {
-		a := ip.Address.String()
-		if ip.Type == "IPv6" {
-			a = "[" + a + "]"
-		}
-		addr := a + ":" + strconv.Itoa(port)
+		count++
+		go r.probeOnePort(e, ipaddr, port, fch)
+	}
 
-		proto := "https"
-		if port == 80 || port == 8080 {
-			proto = "http"
+	for range count {
+		if results := <-fch; len(results) > 0 {
+			findings = append(findings, results...)
 		}
-
-		findings = append(findings, r.plugin.query(e, ipaddr, proto+"://"+addr, port)...)
 	}
 
 	return findings
+}
+
+func (r *ipaddrEndpoint) probeOnePort(e *et.Event, ipaddr *dbt.Entity, port int, ch chan []*support.Finding) {
+	ip := ipaddr.Asset.(*network.IPAddress)
+
+	a := ip.Address.String()
+	if ip.Type == "IPv6" {
+		a = "[" + a + "]"
+	}
+	addr := a + ":" + strconv.Itoa(port)
+
+	proto := "https"
+	if port == 80 || port == 8080 {
+		proto = "http"
+	}
+
+	ch <- r.plugin.query(e, ipaddr, proto+"://"+addr, port)
 }
 
 func (r *ipaddrEndpoint) process(e *et.Event, findings []*support.Finding) {
