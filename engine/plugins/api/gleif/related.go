@@ -133,12 +133,12 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *LEIRecord, 
 
 	if parent != nil {
 		parentorg := &oamorg.Organization{
-			Name:         parent.Attributes.Entity.LegalName.Name,
-			Jurisdiction: parent.Attributes.Entity.Jurisdiction,
+			Name:           parent.Attributes.Entity.LegalName.Name,
+			Jurisdiction:   ro.plugin.modifyJurisdiction(parent.Attributes.Entity.Jurisdiction),
+			RegistrationID: parent.Attributes.Entity.RegisteredAs,
 		}
 
-		parentent, err := org.CreateOrgAsset(e.Session, orgent, nil, parentorg, ro.plugin.source)
-		if err == nil {
+		if parentent, err := ro.getOrganization(e.Session, orgent, nil, parentorg, parent.ID); err == nil {
 			orgs = append(orgs, parentent)
 			ro.plugin.updateOrgFromLEIRecord(e, parentent, parent, ro.plugin.source.Confidence)
 			support.MarkAssetMonitored(e.Session, parentent, ro.plugin.source)
@@ -149,13 +149,13 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *LEIRecord, 
 
 	for _, child := range children {
 		childorg := &oamorg.Organization{
-			Name:         child.Attributes.Entity.LegalName.Name,
-			Jurisdiction: child.Attributes.Entity.Jurisdiction,
+			Name:           child.Attributes.Entity.LegalName.Name,
+			Jurisdiction:   ro.plugin.modifyJurisdiction(child.Attributes.Entity.Jurisdiction),
+			RegistrationID: child.Attributes.Entity.RegisteredAs,
 		}
 
-		childent, err := org.CreateOrgAsset(e.Session, orgent,
-			&oamgen.SimpleRelation{Name: "subsidiary"}, childorg, ro.plugin.source)
-		if err == nil {
+		if childent, err := ro.getOrganization(e.Session, orgent,
+			&oamgen.SimpleRelation{Name: "subsidiary"}, childorg, child.ID); err == nil {
 			orgs = append(orgs, childent)
 			ro.plugin.updateOrgFromLEIRecord(e, childent, child, ro.plugin.source.Confidence)
 			support.MarkAssetMonitored(e.Session, childent, ro.plugin.source)
@@ -163,6 +163,16 @@ func (ro *relatedOrgs) store(e *et.Event, ident *dbt.Entity, parent *LEIRecord, 
 	}
 
 	return orgs
+}
+
+func (ro *relatedOrgs) getOrganization(sess et.Session, ent *dbt.Entity, rel oam.Relation, o *oamorg.Organization, lei string) (*dbt.Entity, error) {
+	orgent, err := org.FindOrgByLEICode(sess, lei, ro.plugin.source)
+
+	if err != nil || orgent == nil {
+		orgent, err = org.CreateOrgAsset(sess, ent, rel, o, ro.plugin.source)
+	}
+
+	return orgent, err
 }
 
 func (ro *relatedOrgs) process(e *et.Event, assets []*dbt.Entity) {

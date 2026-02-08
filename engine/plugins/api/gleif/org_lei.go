@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/owasp-amass/amass/v5/engine/plugins/support"
+	"github.com/owasp-amass/amass/v5/engine/plugins/support/org"
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
 	oam "github.com/owasp-amass/open-asset-model"
@@ -67,14 +68,15 @@ func (g *gleif) updateOrgFromLEIRecord(e *et.Event, orgent *dbt.Entity, lei *LEI
 	_ = g.addIdentifiersToOrg(e, orgent, oamgen.OrganizationName, otherNames, conf)
 
 	if jur := lei.Attributes.Entity.Jurisdiction; jur != "" {
-		o.Jurisdiction = jur
-		if parts := strings.Split(jur, "-"); len(parts) == 2 {
-			o.Jurisdiction = fmt.Sprintf("%s-%s", support.CountryToAlpha3Code(parts[0]), parts[1])
-		}
+		o.Jurisdiction = g.modifyJurisdiction(jur)
+	}
+
+	o.RegistrationID = lei.Attributes.Entity.RegisteredAs
+	if o.RegistrationID != "" {
+		_, _ = org.CreateOrgRegistrationIDClaim(e.Session, orgent, o.RegistrationID, g.source)
 	}
 
 	o.FoundingDate = lei.Attributes.Entity.CreationDate
-	o.RegistrationID = lei.Attributes.Entity.RegisteredAs
 	if lei.Attributes.Entity.Status == "ACTIVE" {
 		o.Active = true
 	} else {
@@ -105,6 +107,15 @@ func (g *gleif) updateOrgFromLEIRecord(e *et.Event, orgent *dbt.Entity, lei *LEI
 		msg := fmt.Sprintf("failed to update the Organization asset for %s: %s", o.Name, err)
 		e.Session.Log().Error(msg, slog.Group("plugin", "name", g.name, "handler", g.name))
 	}
+}
+
+func (g *gleif) modifyJurisdiction(jur string) string {
+	if parts := strings.Split(jur, "-"); len(parts) == 2 {
+		jur = fmt.Sprintf("%s-%s", support.CountryToAlpha3Code(parts[0]), parts[1])
+	} else {
+		jur = support.CountryToAlpha3Code(jur)
+	}
+	return jur
 }
 
 func (g *gleif) addAddress(e *et.Event, orgent *dbt.Entity, rel oam.Relation, addr string, conf int) error {

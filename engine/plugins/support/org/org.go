@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/biter777/countries"
 	"github.com/google/uuid"
 	et "github.com/owasp-amass/amass/v5/engine/types"
 	dbt "github.com/owasp-amass/asset-db/types"
@@ -39,7 +40,16 @@ func CreateOrgAsset(sess et.Session, obj *dbt.Entity, rel oam.Relation, o *oamor
 
 	normName := genNormName(o)
 	if o.Jurisdiction != "" {
-		orgent, _ = FindOrgByNormNameAndJurisdictionClaim(sess, normName, o.Jurisdiction)
+		// attempt to normalize the jurisdiction country
+		if code := countries.ByName(o.Jurisdiction); code.IsValid() {
+			o.Jurisdiction = code.Alpha3()
+		}
+		if o.RegistrationID != "" {
+			orgent, _ = FindOrgByJurisdictionAndRegistrationIDClaim(sess, o.Jurisdiction, o.RegistrationID)
+		}
+		if orgent == nil {
+			orgent, _ = FindOrgByNormNameAndJurisdictionClaim(sess, normName, o.Jurisdiction)
+		}
 	}
 
 	if orgent == nil && obj != nil {
@@ -48,7 +58,7 @@ func CreateOrgAsset(sess et.Session, obj *dbt.Entity, rel oam.Relation, o *oamor
 
 	dName := o.Name
 	if orgent == nil {
-		ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 		defer cancel()
 
 		var err error
@@ -58,35 +68,44 @@ func CreateOrgAsset(sess et.Session, obj *dbt.Entity, rel oam.Relation, o *oamor
 		if err != nil || orgent == nil {
 			return nil, errors.New("failed to create the Organization asset")
 		}
-		// mark this organization by this caller
-		_, _ = sess.DB().CreateEntityProperty(ctx, orgent, &oamgen.SourceProperty{
-			Source:     src.Name,
-			Confidence: src.Confidence,
-		})
 	}
 
-	// create name and jurisdiction claims provided by the caller
 	if orgent != nil {
+		// create name and jurisdiction claims provided by the caller
 		_, _ = CreateOrgNameClaim(sess, orgent, dName, src)
 
 		if o.LegalName != "" {
 			_, _ = CreateOrgLegalNameClaim(sess, orgent, o.LegalName, src)
 		}
 		if o.Jurisdiction != "" {
-			_ = CreateOrgNormNameAndJurisdictionClaim(sess, orgent, o.Jurisdiction)
+			_ = CreateOrgJurisdictionClaim(sess, orgent, o.Jurisdiction)
 		}
-	}
+		if o.RegistrationID != "" {
+			_, _ = CreateOrgRegistrationIDClaim(sess, orgent, o.RegistrationID, src)
+		}
 
-	if obj != nil && rel != nil && orgent != nil && obj.ID != orgent.ID {
 		ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 		defer cancel()
 
-		if err := createRelation(ctx, sess, obj, rel, orgent, src); err != nil {
-			return nil, err
+		// identify this caller as a source of the Organization asset
+		_, _ = sess.DB().CreateEntityProperty(ctx, orgent, &oamgen.SourceProperty{
+			Source:     src.Name,
+			Confidence: src.Confidence,
+		})
+
+		if obj != nil && rel != nil && obj.ID != orgent.ID {
+			ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
+			defer cancel()
+
+			if err := createRelation(ctx, sess, obj, rel, orgent, src); err != nil {
+				return nil, err
+			}
 		}
+
+		return orgent, nil
 	}
 
-	return orgent, nil
+	return nil, errors.New("failed to discover or create the Organization asset")
 }
 
 func genNormName(o *oamorg.Organization) string {

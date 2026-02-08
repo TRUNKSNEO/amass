@@ -135,7 +135,7 @@ func FindOrgByLegalNameClaim(sess et.Session, name string, src *et.Source) (*dbt
 	return nil, fmt.Errorf("failed to obtain the Organization associated with Identifier - %s:%s", oamgen.LegalName, name)
 }
 
-func CreateOrgNormNameAndJurisdictionClaim(sess et.Session, orgent *dbt.Entity, jurisdiction string) error {
+func CreateOrgJurisdictionClaim(sess et.Session, orgent *dbt.Entity, jurisdiction string) error {
 	ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 	defer cancel()
 
@@ -195,4 +195,88 @@ func FindOrgByNormNameAndJurisdictionClaim(sess et.Session, norm, jurisdiction s
 	}
 
 	return nil, fmt.Errorf("failed to obtain the Organization associated with norm name %s and jurisdiction %s", norm, jurisdiction)
+}
+
+func CreateOrgRegistrationIDClaim(sess et.Session, orgent *dbt.Entity, regID string, src *et.Source) (*dbt.Entity, error) {
+	ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
+	defer cancel()
+
+	id := &oamgen.Identifier{
+		UniqueID: fmt.Sprintf("%s:%s", "registration_id", regID),
+		ID:       regID,
+		Type:     "registration_id",
+	}
+
+	ident, err := sess.DB().CreateAsset(ctx, id)
+	if err != nil || ident == nil {
+		return nil, err
+	}
+
+	_, err = sess.DB().CreateEntityProperty(ctx, ident, &oamgen.SourceProperty{
+		Source:     src.Name,
+		Confidence: src.Confidence,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := createRelation(ctx, sess, orgent, &oamgen.SimpleRelation{Name: "id"}, ident, src); err != nil {
+		return nil, err
+	}
+
+	return ident, nil
+}
+
+func FindOrgByJurisdictionAndRegistrationIDClaim(sess et.Session, jurisdiction, regID string) (*dbt.Entity, error) {
+	var country string
+	if parts := strings.Split(jurisdiction, "-"); len(parts) == 2 {
+		country = parts[0]
+	}
+
+	ctx, cancel := context.WithTimeout(sess.Ctx(), time.Minute)
+	defer cancel()
+
+	ids, err := sess.DB().FindEntitiesByContent(ctx, oam.Identifier, time.Time{}, 1, dbt.ContentFilters{
+		"id":      regID,
+		"id_type": "registration_id",
+	})
+	if err != nil || len(ids) != 1 {
+		return nil, fmt.Errorf("failed to obtain the entity for Identifier - %s:%s", "registration_id", regID)
+	}
+
+	for _, ident := range ids {
+		if edges, err := sess.DB().IncomingEdges(ctx, ident, time.Time{}, "id"); err == nil && len(edges) > 0 {
+			for _, edge := range edges {
+				orgent, err := sess.DB().FindEntityById(ctx, edge.FromEntity.ID)
+				if err != nil || orgent == nil {
+					continue
+				}
+
+				tags, err := sess.DB().FindEntityTags(ctx, orgent, time.Time{}, "jurisdiction")
+				if err != nil || len(tags) == 0 {
+					continue
+				}
+
+				for _, tag := range tags {
+					jc, valid := tag.Property.(*oamgen.SimpleProperty)
+					if !valid {
+						continue
+					}
+					jv := jc.PropertyValue
+
+					if strings.EqualFold(jurisdiction, jv) {
+						return orgent, nil
+					} else if country != "" && strings.EqualFold(country, jv) {
+						return orgent, nil
+					} else if parts := strings.Split(jv, "-"); len(parts) == 2 && strings.EqualFold(jurisdiction, parts[0]) {
+						return orgent, nil
+					} else if len(parts) == 2 && strings.EqualFold(country, parts[0]) {
+						return orgent, nil
+					}
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("failed to obtain the Organization associated with jurisdiction %s and registration ID %s", jurisdiction, regID)
 }
