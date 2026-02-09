@@ -117,7 +117,18 @@ func nameRelatedToOrganization(sess et.Session, orgent *dbt.Entity, names []stri
 }
 
 func existsAndSharesLocEntity(sess et.Session, obj *dbt.Entity, o *oamorg.Organization) (*dbt.Entity, error) {
+	var names []string
 	var locs []*dbt.Entity
+
+	if o.Name != "" {
+		names = append(names, o.Name)
+	}
+	if o.LegalName != "" {
+		names = append(names, o.LegalName)
+	}
+	if len(names) == 0 {
+		return nil, errors.New("zero names provided in the Organization")
+	}
 
 	ctx, cancel := context.WithTimeout(sess.Ctx(), 30*time.Second)
 	defer cancel()
@@ -163,7 +174,7 @@ func existsAndSharesLocEntity(sess et.Session, obj *dbt.Entity, o *oamorg.Organi
 	}
 
 	for _, orgent := range orgents {
-		if _, _, found := NameMatch(sess, orgent, []string{o.Name, o.LegalName}); found {
+		if _, _, found := NameMatch(sess, orgent, names); found {
 			return orgent, nil
 		}
 	}
@@ -187,16 +198,27 @@ func matchingLocations(sess et.Session, locs []*dbt.Entity) []*dbt.Entity {
 			continue
 		}
 
+		cf := make(dbt.ContentFilters)
+		if lasset.BuildingNumber != "" {
+			cf["building_number"] = lasset.BuildingNumber
+		}
+		if lasset.StreetName != "" {
+			cf["street_name"] = lasset.StreetName
+		}
+		if lasset.City != "" {
+			cf["city"] = lasset.City
+		}
+		if lasset.Province != "" {
+			cf["province"] = lasset.Province
+		}
+		if lasset.Country != "" {
+			cf["country"] = lasset.Country
+		}
+
 		ctx, cancel := context.WithTimeout(sess.Ctx(), 10*time.Second)
 		defer cancel()
 
-		ents, err := sess.DB().FindEntitiesByContent(ctx, oam.Location, time.Time{}, 0, dbt.ContentFilters{
-			"building_number": lasset.BuildingNumber,
-			"street_name":     lasset.StreetName,
-			"city":            lasset.City,
-			"province":        lasset.Province,
-			"country":         lasset.Country,
-		})
+		ents, err := sess.DB().FindEntitiesByContent(ctx, oam.Location, time.Time{}, 0, cf)
 		if err != nil || len(ents) == 0 {
 			continue
 		}
