@@ -26,7 +26,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/nyaruka/phonenumbers v1.6.9
 	github.com/openrdap/rdap v0.9.1
-	github.com/owasp-amass/asset-db v0.23.2-0.20260216041423-3bc139e52402
+	github.com/owasp-amass/asset-db v0.23.2-0.20260216203254-2bb00a040c09
 	github.com/owasp-amass/open-asset-model v0.15.0
 	github.com/owasp-amass/resolve v0.9.7-0.20260129060429-238e495debf3
 	github.com/pioz/countries v0.2.2
