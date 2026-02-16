@@ -26,7 +26,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/nyaruka/phonenumbers v1.6.9
 	github.com/openrdap/rdap v0.9.1
-	github.com/owasp-amass/asset-db v0.23.2-0.20260212045931-ae73a45d23ae
+	github.com/owasp-amass/asset-db v0.23.2-0.20260216041423-3bc139e52402
 	github.com/owasp-amass/open-asset-model v0.15.0
 	github.com/owasp-amass/resolve v0.9.7-0.20260129060429-238e495debf3
 	github.com/pioz/countries v0.2.2
@@ -98,7 +98,7 @@ require (
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20260211191109-2735e65f0518 // indirect
+	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
