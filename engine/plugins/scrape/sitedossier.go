@@ -55,6 +55,7 @@ func (sd *siteDossier) Start(r et.Registry) error {
 		Plugin:       sd,
 		Name:         sd.name + "-Handler",
 		Position:     37,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   []string{string(oam.FQDN)},
 		EventType:    oam.FQDN,
@@ -103,8 +104,12 @@ func (sd *siteDossier) query(e *et.Event, name string) []*dbt.Entity {
 	defer subs.Close()
 
 	for i := 1; i < 20; i++ {
-		_ = sd.rlimit.Wait(context.TODO())
-		resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: fmt.Sprintf(sd.fmtstr, name, i)})
+		_ = sd.rlimit.Wait(e.Session.Ctx())
+
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+		defer cancel()
+
+		resp, err := http.RequestWebPage(ctx, &http.Request{URL: fmt.Sprintf(sd.fmtstr, name, i)})
 		if err != nil || resp.Body == "" {
 			break
 		}

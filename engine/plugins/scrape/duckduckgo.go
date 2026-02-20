@@ -55,6 +55,7 @@ func (d *duckDuckGo) Start(r et.Registry) error {
 		Plugin:       d,
 		Name:         d.name + "-Handler",
 		Position:     35,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   []string{string(oam.FQDN)},
 		EventType:    oam.FQDN,
@@ -102,8 +103,11 @@ func (d *duckDuckGo) query(e *et.Event, name string) []*dbt.Entity {
 	subs := stringset.New()
 	defer subs.Close()
 
-	_ = d.rlimit.Wait(context.TODO())
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: fmt.Sprintf(d.fmtstr, name, name)})
+	_ = d.rlimit.Wait(e.Session.Ctx())
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	defer cancel()
+
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: fmt.Sprintf(d.fmtstr, name, name)})
 	if err != nil || resp.Body == "" {
 		return nil
 	}

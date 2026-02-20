@@ -107,7 +107,7 @@ func defineArgumentFlags(fs *flag.FlagSet, args *Args) {
 	fs.Var(&args.Ports, "p", "Ports separated by commas (default: 80, 443)")
 	fs.Var(args.Resolvers, "r", "IP addresses of untrusted DNS resolvers (can be used multiple times)")
 	fs.Var(args.Resolvers, "tr", "IP addresses of trusted DNS resolvers (can be used multiple times)")
-	fs.IntVar(&args.Timeout, "timeout", 0, "Number of minutes to let enumeration run before quitting")
+	fs.IntVar(&args.Timeout, "timeout", 0, "Minutes to run without progress before terminating (Default: 30)")
 }
 
 func defineOptionFlags(fs *flag.FlagSet, args *Args) {
@@ -236,6 +236,10 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 		}
 	}
 
+	if args.Timeout == 0 {
+		args.Timeout = 30
+	}
+
 	var progress *pb.ProgressBar
 	if !args.Options.Silent {
 		progress = pb.Start64(int64(count))
@@ -243,9 +247,11 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 
 	done := make(chan struct{}, 1)
 	go func() {
-		var finished int
+		var previous, finished int
 		t := time.NewTicker(2 * time.Second)
 		defer t.Stop()
+		term := time.NewTimer(time.Duration(args.Timeout) * time.Minute)
+		defer term.Stop()
 
 		for {
 			select {
@@ -257,12 +263,17 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 				}
 			case <-t.C:
 				if stats, err := c.SessionStats(token); err == nil && stats != nil {
-					stotal := max(count, stats.WorkItemsTotal)
-					scomplete := max(0, stats.WorkItemsCompleted)
-
 					if !args.Options.Silent {
+						stotal := max(count, stats.WorkItemsTotal)
+						scomplete := max(0, stats.WorkItemsCompleted)
+
 						progress.SetTotal(int64(stotal))
 						progress.SetCurrent(int64(scomplete))
+					}
+
+					if comp := stats.WorkItemsCompleted; comp != previous {
+						previous = comp
+						_ = term.Reset(time.Duration(args.Timeout))
 					}
 
 					if stats.WorkItemsCompleted == stats.WorkItemsTotal {
@@ -275,22 +286,12 @@ func CLIWorkflow(cmdName string, clArgs []string) {
 						finished = 0
 					}
 				}
+			case <-term.C:
+				close(done)
+				return
 			}
 		}
 	}()
-
-	if args.Timeout > 0 {
-		go func() {
-			t := time.NewTimer(time.Minute * time.Duration(args.Timeout))
-			defer t.Stop()
-
-			select {
-			case <-done:
-			case <-t.C:
-				close(done)
-			}
-		}()
-	}
 
 	select {
 	case <-done:

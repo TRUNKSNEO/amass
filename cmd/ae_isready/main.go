@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -43,7 +43,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	u := "http://" + hostname + ":4000/graphql"
+	u := "http://" + hostname + ":4000"
 	if _, err := amasshttp.RequestWebPage(ctx, &amasshttp.Request{URL: u}); err != nil {
 		// a failure to respond indicates that the server is not yet available
 		os.Exit(1)

@@ -55,6 +55,7 @@ func (b *bing) Start(r et.Registry) error {
 		Plugin:       b,
 		Name:         b.name + "-Handler",
 		Position:     33,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   []string{string(oam.FQDN)},
 		EventType:    oam.FQDN,
@@ -103,8 +104,12 @@ func (b *bing) query(e *et.Event, name string) []*dbt.Entity {
 	defer subs.Close()
 
 	for i := 1; i < 10; i++ {
-		_ = b.rlimit.Wait(context.TODO())
-		resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: fmt.Sprintf(b.fmtstr, i, name, name)})
+		_ = b.rlimit.Wait(e.Session.Ctx())
+
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+		defer cancel()
+
+		resp, err := http.RequestWebPage(ctx, &http.Request{URL: fmt.Sprintf(b.fmtstr, i, name, name)})
 		if err != nil || resp.Body == "" {
 			break
 		}

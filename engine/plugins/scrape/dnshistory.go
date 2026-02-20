@@ -1,4 +1,4 @@
-// Copyright © by Jeff Foley 2017-2025. All rights reserved.
+// Copyright © by Jeff Foley 2017-2026. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -55,6 +55,7 @@ func (d *dnsHistory) Start(r et.Registry) error {
 		Plugin:       d,
 		Name:         d.name + "-Handler",
 		Position:     34,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   []string{string(oam.FQDN)},
 		EventType:    oam.FQDN,
@@ -103,8 +104,12 @@ func (d *dnsHistory) query(e *et.Event, name string) []*dbt.Entity {
 	defer subs.Close()
 
 	for i := 1; i < 20; i++ {
-		_ = d.rlimit.Wait(context.TODO())
-		resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: fmt.Sprintf(d.fmtstr, i, name)})
+		_ = d.rlimit.Wait(e.Session.Ctx())
+
+		ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+		defer cancel()
+
+		resp, err := http.RequestWebPage(ctx, &http.Request{URL: fmt.Sprintf(d.fmtstr, i, name)})
 		if err != nil || resp.Body == "" {
 			break
 		}

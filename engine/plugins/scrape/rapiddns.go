@@ -55,6 +55,7 @@ func (rd *rapidDNS) Start(r et.Registry) error {
 		Plugin:       rd,
 		Name:         rd.name + "-Handler",
 		Position:     36,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   []string{string(oam.FQDN)},
 		EventType:    oam.FQDN,
@@ -102,8 +103,11 @@ func (rd *rapidDNS) query(e *et.Event, name string) []*dbt.Entity {
 	subs := stringset.New()
 	defer subs.Close()
 
-	_ = rd.rlimit.Wait(context.TODO())
-	resp, err := http.RequestWebPage(context.TODO(), &http.Request{URL: fmt.Sprintf(rd.fmtstr, name)})
+	_ = rd.rlimit.Wait(e.Session.Ctx())
+	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 10*time.Second)
+	defer cancel()
+
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: fmt.Sprintf(rd.fmtstr, name)})
 	if err != nil || resp.Body == "" {
 		return nil
 	}

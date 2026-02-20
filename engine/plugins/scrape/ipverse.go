@@ -56,6 +56,7 @@ func (v *ipverse) Start(r et.Registry) error {
 		Plugin:       v,
 		Name:         v.name + "-Handler",
 		Position:     30,
+		Exclusive:    true,
 		MaxInstances: support.MidHandlerInstances,
 		Transforms:   []string{string(oam.Netblock)},
 		EventType:    oam.AutonomousSystem,
