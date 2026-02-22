@@ -497,24 +497,7 @@ paths:
       summary: Get session statistics
       tags:
       - sessions
-  /sessions/list:
-    get:
-      description: Returns the session tokens for all currently active sessions.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v1.ListSessionsResponse'
-        "404":
-          description: Zero sessions found
-          schema:
-            $ref: '#/definitions/v1.ErrorResponse'
-      summary: List active sessions
-      tags:
-      - sessions
-  /v1/sessions/{session_token}/ws/logs:
+  /sessions/{session_token}/ws/logs:
     get:
       description: |-
         Upgrades the HTTP connection to a WebSocket and streams session log lines as UTF-8 text frames.
@@ -544,6 +527,23 @@ paths:
           schema:
             $ref: '#/definitions/v1.ErrorResponse'
       summary: Stream session logs (WebSocket)
+      tags:
+      - sessions
+  /sessions/list:
+    get:
+      description: Returns the session tokens for all currently active sessions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.ListSessionsResponse'
+        "404":
+          description: Zero sessions found
+          schema:
+            $ref: '#/definitions/v1.ErrorResponse'
+      summary: List active sessions
       tags:
       - sessions
 swagger: "2.0"

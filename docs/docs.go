@@ -381,7 +381,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/sessions/{session_token}/ws/logs": {
+        "/sessions/{session_token}/ws/logs": {
             "get": {
                 "description": "Upgrades the HTTP connection to a WebSocket and streams session log lines as UTF-8 text frames.\nThe server sends periodic ping frames (~30s) and expects pong responses; idle connections may be closed.",
                 "tags": [

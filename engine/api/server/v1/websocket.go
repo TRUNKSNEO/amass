@@ -30,7 +30,7 @@ var upgrader = websocket.Upgrader{
 // @Success      101  "Switching Protocols (WebSocket upgrade)"
 // @Failure      400  {object}  ErrorResponse  "Invalid session token"
 // @Failure      404  {object}  ErrorResponse  "Session not found"
-// @Router       /v1/sessions/{session_token}/ws/logs [get]
+// @Router       /sessions/{session_token}/ws/logs [get]
 // @Header  	 101  {string}  Upgrade     "websocket"
 // @Header  	 101  {string}  Connection  "Upgrade"
 func (v *V1Handlers) WSLogsHandler(w http.ResponseWriter, r *http.Request) {
