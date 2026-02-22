@@ -19,6 +19,10 @@ import (
 
 const maxBulkItems = 5000
 
+type HealthCheckResponse struct {
+	Result string `json:"result"`
+}
+
 type CreateSessionResponse struct {
 	SessionToken string `json:"sessionToken"`
 }
@@ -54,6 +58,12 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		s.log.Info("request completed", "method", r.Method, "path", r.URL.Path, "duration", time.Since(start))
 	})
+}
+
+func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
+	resp := HealthCheckResponse{Result: "Amass Engine OK"}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) createSessionHandler(w http.ResponseWriter, r *http.Request) {

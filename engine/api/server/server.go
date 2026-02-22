@@ -93,6 +93,7 @@ const assetTypeRE = `[a-z0-9][a-z0-9_-]{0,63}`
 /*
 Routes (v1)
 
+GET    /v1/health
 POST   /v1/sessions
 GET	   /v1/sessions/list
 DELETE /v1/sessions/{session_token}
@@ -113,6 +114,8 @@ func (s *Server) routes(r *mux.Router) {
 	})
 
 	v1 := r.PathPrefix("/v1").Subrouter()
+	v1.HandleFunc("/health", s.healthCheck).Methods(http.MethodGet)
+
 	sessions := v1.PathPrefix("/sessions").Subrouter()
 	sessions.HandleFunc("", s.createSessionHandler).Methods(http.MethodPost)
 	sessions.HandleFunc("/list", s.listSessionsHandler).Methods(http.MethodGet)

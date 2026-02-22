@@ -9,17 +9,14 @@ import (
 	"io"
 	"os"
 
-	"github.com/google/uuid"
 	"github.com/owasp-amass/amass/v5/engine/api/client"
 )
 
 func engineIsRunning() bool {
-	c := client.NewClient("http://127.0.0.1:4000/")
+	c := client.NewClient("http://127.0.0.1:4000")
+	defer c.Close()
 
-	if _, err := c.SessionStats(uuid.New()); err != nil && err.Error() == "session not found" {
-		return true
-	}
-	return false
+	return c.HealthCheck()
 }
 
 func startEngine() error {

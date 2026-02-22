@@ -66,6 +66,7 @@ func DetectRegistrantPlaceholder(value string) PrivacyDetection {
 		"private registration":         "PRIVATE_REGISTRATION",
 		"privacy protected":            "PRIVACY_PROTECTED",
 		"privacy protection":           "PRIVACY_PROTECTION",
+		"privacy customer":             "PRIVACY_CUSTOMER",
 		"gdpr masked":                  "GDPR_MASKED",
 		"masked for privacy":           "MASKED_FOR_PRIVACY",
 		"withheld for privacy":         "WITHHELD_FOR_PRIVACY",

@@ -98,7 +98,7 @@ func (c *Config) LoadEngineEnvSettings() error {
 	if p != "" {
 		u = u[:len(u)-1]
 	}
-	apiURI = scheme + "://" + u + p + h + ":" + port + "/" + path
+	apiURI = scheme + "://" + u + p + h + ":" + port
 	eng.URL = apiURI
 
 	c.EngineAPI = eng

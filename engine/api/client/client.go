@@ -68,6 +68,19 @@ func (c *Client) Close() {
 	close(c.done)
 }
 
+// HealthCheck returns true when the client was able to reach the server.
+func (c *Client) HealthCheck() bool {
+	req, _ := http.NewRequest(http.MethodGet, c.base+"/v1/health", nil)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	return resp.StatusCode == http.StatusOK
+}
+
 // Creates a new session on the server with the provided configuration.
 func (c *Client) CreateSession(config *config.Config) (uuid.UUID, error) {
 	raw, err := json.Marshal(config)
@@ -102,7 +115,7 @@ func (c *Client) CreateSession(config *config.Config) (uuid.UUID, error) {
 
 // Lists the active session and associated tokens on the server.
 func (c *Client) ListSessions() ([]uuid.UUID, error) {
-	req, _ := http.NewRequest(http.MethodGet, c.base+"/v1/sessions", nil)
+	req, _ := http.NewRequest(http.MethodGet, c.base+"/v1/sessions/list", nil)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
