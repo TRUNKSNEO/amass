@@ -33,6 +33,7 @@ require (
 	github.com/samber/slog-common v0.20.0
 	github.com/samber/slog-syslog/v2 v2.5.3
 	github.com/stretchr/testify v1.11.1
+	github.com/swaggo/swag v1.16.6
 	github.com/tylertreat/BoomFilters v0.0.0-20251117164519-53813c36cc1b
 	github.com/yl2chen/cidranger v1.0.2
 	golang.org/x/net v0.50.0
@@ -44,6 +45,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
@@ -62,6 +64,10 @@ require (
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/go-json-experiment/json v0.0.0-20260214004413-d219187c3433 // indirect
 	github.com/go-kit/kit v0.13.0 // indirect
+	github.com/go-openapi/jsonpointer v0.19.5 // indirect
+	github.com/go-openapi/jsonreference v0.19.6 // indirect
+	github.com/go-openapi/spec v0.20.4 // indirect
+	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
@@ -73,9 +79,11 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.8.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/likexian/gokit v0.25.16 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.20 // indirect
@@ -109,6 +117,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260217215200-42d3e9bedb6d // indirect
 	google.golang.org/grpc v1.79.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/gorm v1.31.1 // indirect
 	modernc.org/libc v1.68.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
