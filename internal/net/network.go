@@ -14,6 +14,9 @@ import (
 	"time"
 )
 
+// Maximum number of connections allowed by each process.
+const MaxNetworkConns = 500
+
 // IPv4RE is a regular expression that will match an IPv4 address.
 const IPv4RE = "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)[.]){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
 
@@ -48,11 +51,39 @@ var ReservedCIDRs = []string{
 // The reserved network address ranges
 var reservedAddrRanges []*net.IPNet
 
+type Semaphore chan struct{}
+
+var MaxNetConnSem Semaphore
+
 func init() {
 	for _, cidr := range ReservedCIDRs {
 		if _, ipnet, err := net.ParseCIDR(cidr); err == nil {
 			reservedAddrRanges = append(reservedAddrRanges, ipnet)
 		}
+	}
+
+	// setup the semaphore for limiting max network connections
+	MaxNetConnSem = NewSemaphore(MaxNetworkConns)
+}
+
+func NewSemaphore(cap int) Semaphore {
+	sem := make(Semaphore, cap)
+
+	for range cap {
+		sem <- struct{}{}
+	}
+
+	return sem
+}
+
+func (r Semaphore) Acquire() {
+	<-r
+}
+
+func (r Semaphore) Release() {
+	select {
+	case r <- struct{}{}:
+	default:
 	}
 }
 

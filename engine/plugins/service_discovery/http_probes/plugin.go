@@ -105,7 +105,11 @@ func (hp *httpProbing) query(e *et.Event, entity *dbt.Entity, target string, por
 	ctx, cancel := context.WithTimeout(e.Session.Ctx(), 5*time.Second)
 	defer cancel()
 
-	if resp, err := http.RequestWebPage(ctx, &http.Request{URL: target}); err == nil && resp != nil {
+	e.Session.NetSem().Acquire()
+	resp, err := http.RequestWebPage(ctx, &http.Request{URL: target})
+	e.Session.NetSem().Release()
+
+	if err == nil && resp != nil {
 		findings = append(findings, hp.store(e, resp, entity, port)...)
 	}
 	return findings

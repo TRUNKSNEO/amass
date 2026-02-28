@@ -41,7 +41,7 @@ func NewManager(l *slog.Logger, reg et.Registry) et.SessionManager {
 }
 
 func (r *manager) NewSession(cfg *config.Config) (et.Session, error) {
-	s, err := CreateSession(r.registry, cfg)
+	s, err := CreateSession(r, r.registry, cfg)
 	if err == nil {
 		err = r.AddSession(s)
 
@@ -118,6 +118,13 @@ func (r *manager) GetSession(id uuid.UUID) et.Session {
 		return s
 	}
 	return nil
+}
+
+func (r *manager) NumOfSessions() int {
+	r.RLock()
+	defer r.RUnlock()
+
+	return len(r.sessions)
 }
 
 // Shutdown: cleans all sessions from a session storage and shutdown the session storage.

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ import (
 	"github.com/owasp-amass/amass/v5/engine/pubsub"
 	"github.com/owasp-amass/amass/v5/engine/sessions/scope"
 	et "github.com/owasp-amass/amass/v5/engine/types"
+	amassnet "github.com/owasp-amass/amass/v5/internal/net"
 	assetdb "github.com/owasp-amass/asset-db"
 	"github.com/owasp-amass/asset-db/repository"
 	"github.com/owasp-amass/asset-db/repository/neo4j"
@@ -29,47 +31,54 @@ import (
 )
 
 type Session struct {
-	id        uuid.UUID
-	ctx       context.Context
-	cancel    context.CancelFunc
-	log       *slog.Logger
-	ps        *pubsub.Logger
-	cfg       *config.Config
-	scope     et.Scope
-	start     time.Time
-	db        repository.Repository
-	backlog   *sessionBacklog
-	pipelines et.SessionPipelines
-	dsn       string
-	dbtype    string
-	ranger    cidranger.Ranger
-	tmpdir    string
-	stats     *et.SessionStats
-	done      chan struct{}
-	finished  bool
+	id           uuid.UUID
+	mgr          *manager
+	ctx          context.Context
+	cancel       context.CancelFunc
+	log          *slog.Logger
+	ps           *pubsub.Logger
+	cfg          *config.Config
+	scope        et.Scope
+	start        time.Time
+	db           repository.Repository
+	backlog      *sessionBacklog
+	pipelines    et.SessionPipelines
+	dsn          string
+	dbtype       string
+	ranger       cidranger.Ranger
+	tmpdir       string
+	stats        *et.SessionStats
+	done         chan struct{}
+	finished     bool
+	numOfSess    int
+	netSemaphore *sessSemaphore
 }
 
 // CreateSession initializes a new Session object based on the provided configuration.
 // The session object represents the state of an active engine enumeration.
-func CreateSession(reg et.Registry, cfg *config.Config) (et.Session, error) {
+func CreateSession(mgr *manager, reg et.Registry, cfg *config.Config) (et.Session, error) {
 	// Use default configuration if none is provided
 	if cfg == nil {
 		cfg = config.NewConfig()
 	}
 
 	startTime := time.Now()
+	numOfSessions := mgr.NumOfSessions() + 1
 	ctx, cancel := context.WithCancel(context.Background())
 	// Create a new session object
 	s := &Session{
-		id:     uuid.New(),
-		ctx:    ctx,
-		cancel: cancel,
-		cfg:    cfg,
-		start:  startTime,
-		ranger: NewAmassRanger(),
-		ps:     pubsub.NewLogger(),
-		stats:  new(et.SessionStats),
-		done:   make(chan struct{}),
+		id:           uuid.New(),
+		mgr:          mgr,
+		ctx:          ctx,
+		cancel:       cancel,
+		cfg:          cfg,
+		start:        startTime,
+		ranger:       NewAmassRanger(),
+		ps:           pubsub.NewLogger(),
+		stats:        new(et.SessionStats),
+		done:         make(chan struct{}),
+		numOfSess:    numOfSessions,
+		netSemaphore: NewSessSemaphore(amassnet.MaxNetworkConns / numOfSessions),
 	}
 	s.scope = scope.CreateFromConfigScope(s)
 	s.log = slog.New(slog.NewJSONHandler(s.ps, nil)).With("session", s.id)
@@ -102,6 +111,7 @@ func CreateSession(reg et.Registry, cfg *config.Config) (et.Session, error) {
 	s.log.Info("Temporary directory created", slog.String("dir", s.tmpdir))
 	s.log.Info("Database connection established", slog.String("dsn", s.dsn))
 	go s.updateStats()
+	go s.updateSessionSemaphore()
 	return s, nil
 }
 
@@ -119,6 +129,10 @@ func (s *Session) Log() *slog.Logger {
 
 func (s *Session) PubSub() *pubsub.Logger {
 	return s.ps
+}
+
+func (s *Session) NetSem() et.SessionSemaphone {
+	return s.netSemaphore
 }
 
 func (s *Session) Config() *config.Config {
@@ -297,4 +311,67 @@ func (s *Session) calculateStats() {
 	ss.WorkItemsTotal = total
 	ss.WorkItemsCompleted = completed
 	ss.Unlock()
+}
+
+type sessSemaphore struct {
+	sync.Mutex
+	sem amassnet.Semaphore
+}
+
+func NewSessSemaphore(limit int) *sessSemaphore {
+	return &sessSemaphore{sem: amassnet.NewSemaphore(limit)}
+}
+
+func (ss *sessSemaphore) Acquire() {
+	ss.Lock()
+	defer ss.Unlock()
+
+	ss.sem.Acquire()
+}
+
+func (ss *sessSemaphore) Release() {
+	ss.Lock()
+	defer ss.Unlock()
+
+	ss.sem.Release()
+}
+
+func (s *Session) updateSessionSemaphore() {
+	tick := time.NewTicker(10 * time.Second)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-tick.C:
+			if num := s.mgr.NumOfSessions(); num != s.numOfSess {
+				s.numOfSess = num
+				s.buildNewSessionSemaphore()
+			}
+		}
+	}
+}
+
+func (s *Session) buildNewSessionSemaphore() {
+	s.netSemaphore.Lock()
+	defer s.netSemaphore.Unlock()
+
+	limit := amassnet.MaxNetworkConns / s.numOfSess
+	sem := amassnet.NewSemaphore(limit)
+loop:
+	for range limit {
+		select {
+		case s.netSemaphore.sem <- struct{}{}:
+			select {
+			case <-sem:
+			default:
+				break loop
+			}
+		default:
+			break loop
+		}
+	}
+
+	s.netSemaphore.sem = sem
 }

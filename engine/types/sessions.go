@@ -26,11 +26,17 @@ import (
 
 type SessionPipelines map[oam.AssetType]*AssetPipeline
 
+type SessionSemaphone interface {
+	Acquire()
+	Release()
+}
+
 type Session interface {
 	ID() uuid.UUID
 	Ctx() context.Context
 	Log() *slog.Logger
 	PubSub() *pubsub.Logger
+	NetSem() SessionSemaphone
 	Config() *config.Config
 	Scope() Scope
 	StartTime() time.Time
