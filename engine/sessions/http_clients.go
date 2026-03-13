@@ -78,7 +78,7 @@ func newGeneralTransport() *http.Transport {
 	return &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           amassnet.NewDialContext(8 * time.Second),
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     false,
 		MaxIdleConns:          200,
 		MaxIdleConnsPerHost:   20,
 		MaxConnsPerHost:       64,
@@ -96,10 +96,9 @@ func newGeneralTransport() *http.Transport {
 
 func newProbeTransport(perHost int) *http.Transport {
 	return &http.Transport{
-		Proxy:             http.ProxyFromEnvironment,
-		DialContext:       amassnet.NewDialContext(5 * time.Second),
-		ForceAttemptHTTP2: false,
-		// keep this lower: probes spray across many hosts; idle pools become “memory”
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           amassnet.NewDialContext(5 * time.Second),
+		ForceAttemptHTTP2:     false,
 		MaxIdleConns:          64,
 		MaxIdleConnsPerHost:   perHost,
 		MaxConnsPerHost:       perHost * 3,
@@ -107,13 +106,8 @@ func newProbeTransport(perHost int) *http.Transport {
 		TLSHandshakeTimeout:   6 * time.Second,
 		ExpectContinueTimeout: 0,
 		ResponseHeaderTimeout: 8 * time.Second,
-		// often you’ll hit junk certs during probing; keep verification on by default.
-		// if you *must* allow insecure probing, fork a separate transport with InsecureSkipVerify=true
-		// but be intentional about it
-		TLSClientConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		},
-		DisableCompression: true, // avoid spending CPU on gzip for tiny probe responses
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+		DisableCompression:    true,
 	}
 }
 
