@@ -84,7 +84,6 @@ func init() {
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			DialContext:           amassnet.NewDialContext(15 * time.Second),
-			MaxConnsPerHost:       100,
 			MaxIdleConns:          200,
 			MaxIdleConnsPerHost:   20,
 			IdleConnTimeout:       90 * time.Second,

@@ -81,7 +81,6 @@ func newGeneralTransport() *http.Transport {
 		ForceAttemptHTTP2:     false,
 		MaxIdleConns:          200,
 		MaxIdleConnsPerHost:   20,
-		MaxConnsPerHost:       64,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   8 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
@@ -101,7 +100,6 @@ func newProbeTransport(perHost int) *http.Transport {
 		ForceAttemptHTTP2:     false,
 		MaxIdleConns:          64,
 		MaxIdleConnsPerHost:   perHost,
-		MaxConnsPerHost:       perHost * 3,
 		IdleConnTimeout:       15 * time.Second,
 		TLSHandshakeTimeout:   6 * time.Second,
 		ExpectContinueTimeout: 0,
@@ -119,7 +117,6 @@ func newCrawlTransport() *http.Transport {
 		// crawling usually hits same hosts repeatedly; keep-alives pay off
 		MaxIdleConns:          256,
 		MaxIdleConnsPerHost:   32,
-		MaxConnsPerHost:       96,
 		IdleConnTimeout:       120 * time.Second,
 		TLSHandshakeTimeout:   8 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
