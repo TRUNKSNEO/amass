@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.13.0
-	github.com/PuerkitoBio/goquery v1.11.0
+	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/PuerkitoBio/purell v1.2.1
 	github.com/adrg/strutil v0.3.1
 	github.com/biter777/countries v1.7.5
@@ -26,7 +26,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/nyaruka/phonenumbers v1.6.11
 	github.com/openrdap/rdap v0.9.1
-	github.com/owasp-amass/asset-db v0.24.2
+	github.com/owasp-amass/asset-db v0.24.3
 	github.com/owasp-amass/open-asset-model v0.15.1-0.20260306015734-5261c591eef2
 	github.com/owasp-amass/resolve v0.10.0
 	github.com/pioz/countries v0.2.2
@@ -36,10 +36,10 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/tylertreat/BoomFilters v0.0.0-20251117164519-53813c36cc1b
 	github.com/yl2chen/cidranger v1.0.2
-	golang.org/x/net v0.51.0
+	golang.org/x/net v0.52.0
 	golang.org/x/time v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.46.1
+	modernc.org/sqlite v1.46.2
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -77,7 +77,7 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
-	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/influxdata/line-protocol/v2 v2.2.1 // indirect
@@ -110,16 +110,16 @@ require (
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
+	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260306145045-e526e8a188f5 // indirect
-	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/tools v0.42.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260316223853-b6b0c46d1ccd // indirect
+	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260316180232-0b37fe3546d5 // indirect
 	google.golang.org/grpc v1.79.2 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	modernc.org/libc v1.70.0 // indirect
