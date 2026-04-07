@@ -23,13 +23,13 @@ require (
 	github.com/likexian/whois v1.15.7
 	github.com/likexian/whois-parser v1.24.21
 	github.com/miekg/dns v1.1.72
-	github.com/nyaruka/phonenumbers v1.7.0
+	github.com/nyaruka/phonenumbers v1.7.1
 	github.com/openrdap/rdap v0.9.1
 	github.com/owasp-amass/asset-db v0.24.4
 	github.com/owasp-amass/open-asset-model v0.15.1-0.20260306015734-5261c591eef2
 	github.com/owasp-amass/resolve v0.10.0
 	github.com/pioz/countries v0.2.2
-	github.com/samber/slog-common v0.21.0
+	github.com/samber/slog-common v0.22.0
 	github.com/samber/slog-syslog/v2 v2.5.4
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/swag v1.16.6
@@ -39,7 +39,7 @@ require (
 	golang.org/x/time v0.15.0
 	gopkg.in/ini.v1 v1.67.1
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.48.0
+	modernc.org/sqlite v1.48.1
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -54,7 +54,7 @@ require (
 	github.com/apache/arrow-go/v18 v18.5.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20260328224638-b7b298a31867 // indirect
+	github.com/chromedp/cdproto v0.0.0-20260405000525-47a8ff65b46a // indirect
 	github.com/chromedp/chromedp v0.15.1 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
@@ -90,7 +90,7 @@ require (
 	github.com/likexian/gokit v0.25.16 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.21 // indirect
+	github.com/mattn/go-runewidth v0.0.22 // indirect
 	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -119,8 +119,8 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools v0.43.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401001100-f93e5f3e9f0f // indirect
-	google.golang.org/grpc v1.79.3 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
+	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	modernc.org/libc v1.70.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
